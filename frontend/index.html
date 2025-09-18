@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ventbuddy - A privacy-preserving space to express yourself and find support</title>
+    <meta name="description" content="Share your thoughts anonymously with Zama FHEVM encryption. Privacy-preserving social platform where your identity stays protected while you connect with others." />
+    <meta name="author" content="Ventbuddy Team" />
+    <meta name="keywords" content="anonymous, privacy, social media, encryption, FHEVM, blockchain, venting, mental health" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Ventbuddy - A privacy-preserving space to express yourself and find support" />
+    <meta property="og:description" content="Share your thoughts anonymously with FHEVM encryption. Privacy-preserving social platform where your identity stays protected while you connect with others." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://vb.yeetcaster.xyz" />
+    <meta property="og:image" content="/android-chrome-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Ventbuddy - A privacy-preserving space to express yourself and find support" />
+    <meta property="og:site_name" content="Ventbuddy" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Ventbuddy_app" />
+    <meta name="twitter:creator" content="@Ventbuddy_app" />
+    <meta name="twitter:title" content="Ventbuddy - A privacy-preserving space to express yourself and find support" />
+    <meta name="twitter:description" content="Share your thoughts anonymously with Zama FHEVM encryption. Privacy-preserving social platform where your identity stays protected." />
+    <meta name="twitter:image" content="/android-chrome-512x512.png" />
+    <meta name="twitter:image:alt" content="Ventbuddy - A privacy-preserving space to express yourself and find support" />
+
+    <!-- Additional Meta Tags -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="msapplication-TileColor" content="#000000" />
+    <meta name="msapplication-TileImage" content="/android-chrome-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <!-- FHEVM SDK CDN (fallback only) -->
+    <script
+      src="https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.umd.cjs"
+      type="text/javascript"
+      onload="console.log('FHEVM SDK CDN loaded as fallback, global objects:', Object.keys(window).filter(k => k.includes('Fhevm') || k.includes('fhevm')))"
+      onerror="console.error('Failed to load FHEVM SDK CDN fallback')"
+    ></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
