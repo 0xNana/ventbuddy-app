@@ -72,7 +72,7 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
 
       return () => clearTimeout(walletTimer);
     }
-  }, [sequenceCompleted, log]);
+  }, [sequenceCompleted]); // Removed log from dependencies to prevent infinite re-renders
 
   const handleSequenceComplete = () => {
     log.info('Cypher sequence completed');
@@ -98,18 +98,16 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
 
   // Compute derived UI state instead of using useEffect to avoid setState during render
   const derivedUiState = useMemo(() => {
-    const baseState = uiState;
-    
     if (walletConnected) {
       return {
-        ...baseState,
+        ...uiState,
         showEnterButton: true,
         showWalletConnect: false,
         showWalletCypher: false,
       };
     } else {
       return {
-        ...baseState,
+        ...uiState,
         showEnterButton: false,
       };
     }
