@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo} from 'react';
 import { MatrixBackground } from './MatrixBackground';
 import { CypherSequence } from './CypherText';
 import { Button } from '@/components/ui/button';
-import { Shield, Lock, Eye, EyeOff, Zap, Database, Wallet } from 'lucide-react';
+import { Shield, Lock, Zap, Database, Wallet } from 'lucide-react';
 import { useWallet } from '@/hooks/useContract';
 import { useAccount } from 'wagmi';
 import { useLogger } from '@/hooks/useLogger';
@@ -22,6 +22,7 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
   });
   
   const [sequenceCompleted, setSequenceCompleted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const { connectWallet, isConnected, address, isPending } = useWallet();
   const { connector } = useAccount();
@@ -44,6 +45,8 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
   ];
 
   useEffect(() => {
+    setIsMounted(true);
+    
     // Start the cypher sequence after a short delay
     const timer = setTimeout(() => {
       setUiState(prev => ({ ...prev, showContent: true }));
@@ -63,7 +66,6 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
       
       // Show wallet connect button after a delay
       const walletTimer = setTimeout(() => {
-        log.info('Showing wallet connect button');
         setUiState(prev => ({ 
           ...prev, 
           showWalletConnect: true 
@@ -72,7 +74,7 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
 
       return () => clearTimeout(walletTimer);
     }
-  }, [sequenceCompleted]); // Removed log from dependencies to prevent infinite re-renders
+  }, [sequenceCompleted]);
 
   const handleSequenceComplete = () => {
     log.info('Cypher sequence completed');
@@ -94,13 +96,29 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
   };
 
   // Memoize wallet connection state to prevent unnecessary updates
-  const walletConnected = useMemo(() => isConnected && address, [isConnected, address]);
+  const walletConnected = useMemo(() => isMounted && isConnected && address, [isMounted, isConnected, address]);
 
   // Compute derived UI state instead of using useEffect to avoid setState during render
   const derivedUiState = useMemo(() => {
+    if (!isMounted) {
+      return {
+        ...uiState,
+        showEnterButton: false,
+        showWalletConnect: false,
+        showWalletCypher: false,
+      };
+    }
+
+    const baseState = {
+      showEnterButton: false,
+      showWalletConnect: uiState.showWalletConnect,
+      showWalletCypher: uiState.showWalletCypher,
+    };
+
     if (walletConnected) {
       return {
         ...uiState,
+        ...baseState,
         showEnterButton: true,
         showWalletConnect: false,
         showWalletCypher: false,
@@ -108,10 +126,10 @@ export const CypherpunkHomePage: React.FC<CypherpunkHomePageProps> = ({ onEnterA
     } else {
       return {
         ...uiState,
-        showEnterButton: false,
+        ...baseState,
       };
     }
-  }, [uiState, walletConnected]);
+  }, [isMounted, uiState, walletConnected]);
 
   return (
     <div className="min-h-screen bg-black text-green-400 overflow-hidden relative">

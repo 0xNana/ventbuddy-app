@@ -21,17 +21,14 @@ export function useWallet() {
   const connectWallet = useCallback(async () => {
     log.trace('connectWallet');
     try {
-      // Use the first available connector
       const targetConnector = connectors[0];
       
       if (targetConnector) {
         log.info('Connecting wallet', { connector: targetConnector.name });
         await connect({ connector: targetConnector });
         
-        // Wait a moment for the connection to establish
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Ensure we're on the Sepolia network
         log.info('Ensuring Sepolia network');
         await ensureSepoliaNetwork();
         
@@ -50,11 +47,9 @@ export function useWallet() {
     return await getWalletClientFromWagmi();
   }, [walletClient]);
 
-  // Monitor network changes
   useEffect(() => {
     if (!isConnected) {
-      // Defer state update to avoid setState during render
-      setTimeout(() => setNetworkInfo(null), 0);
+      setNetworkInfo(null);
       return;
     }
 
@@ -68,10 +63,8 @@ export function useWallet() {
       }
     };
 
-    // Initial network check - defer to avoid setState during render
-    setTimeout(updateNetworkInfo, 0);
+    updateNetworkInfo();
 
-    // Listen for network changes
     const cleanup = onNetworkChange(() => {
       updateNetworkInfo();
     });
@@ -100,7 +93,6 @@ export function useUserRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug connection status
   useEffect(() => {
     log.debug('Wallet connection status', {
       address,
@@ -122,10 +114,8 @@ export function useUserRegistration() {
     setError(null);
 
     try {
-      // Use the provided address or the connected wallet address
       const targetAddress = userAddress || address;
       
-      // Generate proper FHE-encrypted address and proof using enhanced FHE service
       log.info('Generating FHE-encrypted address for registration');
       const { encryptedAddress, proof } = await fheEncryptionService.encryptAddress(targetAddress, targetAddress);
       
@@ -139,9 +129,7 @@ export function useUserRegistration() {
       
       let txHash: string;
       
-      // Use optimized registration approach to reduce RPC calls
       try {
-        // Use generic contract service for all wallets
         log.info('Using optimized contract service registration');
         const contractService = new VentbuddyContract(walletClient);
         const result = await contractService.registerUser(
@@ -154,7 +142,6 @@ export function useUserRegistration() {
       } catch (contractError: any) {
         log.warn('Contract registration error', contractError);
         
-        // Enhanced error analysis
         const errorMessage = contractError.message || contractError.toString() || '';
         const errorCode = contractError.code || '';
         const errorData = contractError.data || '';
@@ -166,7 +153,6 @@ export function useUserRegistration() {
           fullError: contractError
         });
         
-        // Check if user is already registered
         const isAlreadyRegistered = 
           errorMessage.includes('User already registered') || 
           errorMessage.includes('0xb9688461') ||
@@ -175,7 +161,6 @@ export function useUserRegistration() {
           errorCode === '0xb9688461' ||
           errorData.includes('0xb9688461');
           
-        // Check for simulation/execution errors that might indicate already registered
         const isSimulationError = 
           errorMessage.includes('simulating the action') ||
           errorMessage.includes('executing calls') ||
@@ -189,11 +174,10 @@ export function useUserRegistration() {
           txHash = 'already_registered';
         } else {
           log.error('Unexpected contract error', contractError);
-          throw contractError; // Re-throw other contract errors
+          throw contractError; 
         }
       }
       
-      // 3. Store user registration data in Supabase (regardless of contract registration status)
       const { contentStorage } = await import('../lib/supabase');
       const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -206,7 +190,6 @@ export function useUserRegistration() {
         log.info('User registration stored in Supabase successfully');
       } catch (supabaseError) {
         log.warn('Supabase storage failed, but registration will continue', supabaseError);
-        // Don't throw error - registration can still succeed even if Supabase fails
       }
       
       setIsRegistered(true);
@@ -214,7 +197,6 @@ export function useUserRegistration() {
     } catch (err: any) {
       log.error('Registration error details', err);
       
-      // Check if this is a "User already registered" error at the top level
       const errorMessage = err.message || err.toString() || '';
       if (errorMessage.includes('0xb9688461') || 
           errorMessage.includes('User already registered') ||
@@ -223,12 +205,10 @@ export function useUserRegistration() {
         
         log.info('User already registered - syncing to Supabase only');
         
-        // Store in Supabase even if contract registration fails
         try {
           const { contentStorage } = await import('../lib/supabase');
           const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           
-          // Re-generate encrypted address for Supabase sync
           const { encryptedAddress: syncEncryptedAddress } = await fheEncryptionService.encryptAddress(address!, address!);
           
           await contentStorage.createUserSession(
@@ -247,7 +227,6 @@ export function useUserRegistration() {
         }
       }
       
-      // Provide more specific error messages
       let userFriendlyError = 'Registration failed';
       if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
         userFriendlyError = 'Rate limit exceeded. Please wait a moment and try again.';
@@ -282,10 +261,7 @@ export function useUserRegistration() {
 }
 
 
-/**
- * Hook to check user registration status from Supabase ONLY
- * No contract queries - purely Supabase-based
- */
+
 export function useRegistrationStatus() {
   const { address, isConnected } = useAccount();
   const log = useLogger('useRegistrationStatus');
@@ -295,19 +271,19 @@ export function useRegistrationStatus() {
   useEffect(() => {
     const checkRegistrationStatus = async () => {
       if (!address) {
-        // Defer state update to avoid setState during render
+        
         setTimeout(() => setIsRegistered(null), 0);
         return;
       }
 
-      // Only check registration status if wallet is properly connected
+      
       if (!isConnected) {
-        // Defer state update to avoid setState during render
+        
         setTimeout(() => setIsRegistered(false), 0);
         return;
       }
 
-      // Defer state update to avoid setState during render
+      
       setTimeout(() => setIsLoading(true), 0);
       
       try {
@@ -323,16 +299,14 @@ export function useRegistrationStatus() {
       }
     };
 
-    // Defer the entire check to avoid setState during render
+    
     setTimeout(checkRegistrationStatus, 0);
   }, [address, isConnected]);
 
   return { isRegistered, isLoading };
 }
 
-/**
- * Hook for creating posts with FHE encryption
- */
+
 export function useCreatePost() {
   const { address } = useAccount();
   const { walletClient } = useWallet();
@@ -361,7 +335,7 @@ export function useCreatePost() {
         minTipAmount
       });
 
-      // 0. Ensure FHE service is ready BEFORE starting
+      
       log.info('Step 0: Ensuring FHE service is ready');
       const { fheEncryptionService } = await import('../lib/fhe-encryption');
       
@@ -372,14 +346,14 @@ export function useCreatePost() {
       
       log.info('FHE service is ready, proceeding with post creation');
 
-      // 1. Encrypt content (but don't store yet - we need the encrypted post ID first)
+      
       log.info('Step 1: Encrypting content');
       const { contentEncryptionService } = await import('../lib/content-encryption');
       
-      // Create preview (first 100 characters)
+      
       const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
       
-      // Generate hashes and encrypt content (but don't store in DB yet)
+      
       const contentHash = await contentEncryptionService.generateHash(content);
       const previewHash = await contentEncryptionService.generateHash(preview);
       const encryptedContent = contentEncryptionService.encryptContent(content);
@@ -392,9 +366,8 @@ export function useCreatePost() {
         encryptedPreviewLength: encryptedPreview.length
       });
 
-      // 2. Encrypt visibility using FHE
       
-      // Only encrypt the visibility (0=Public, 1=Tippable)
+      
       const visibilityEncryption = await fheEncryptionService.encryptNumber(visibility, address);
 
       log.info('FHE encryption completed', {
@@ -402,13 +375,12 @@ export function useCreatePost() {
         proofLength: visibilityEncryption.proof.length
       });
 
-      // 3. Prepare contract data
+
       log.info('Step 3: Preparing contract data');
       const { VentbuddyContract } = await import('../lib/contract');
       
-      // Use the content hash as the primary identifier for the contract
-      // This ensures the post ID is deterministic and based on the actual content
-      const contractSupabaseId = contentHash; // Use content hash as the identifier
+      
+      const contractSupabaseId = contentHash; 
       
       const postData = {
         contentHash: contentHash as `0x${string}`,
@@ -416,7 +388,7 @@ export function useCreatePost() {
         supabaseId: contractSupabaseId,
         encryptedVisibility: visibilityEncryption.encryptedValue as `0x${string}`,
         visibilityProof: visibilityEncryption.proof as `0x${string}`,
-        minTipAmount: minTipAmount, // Convert to wei (18 decimals for ETH)
+        minTipAmount: minTipAmount, 
       };
 
       log.info('Contract data prepared', {
@@ -437,7 +409,7 @@ export function useCreatePost() {
         minTipAmount: postData.minTipAmount
       });
 
-      // 4. Call smart contract
+      
       log.info('Step 4: Calling smart contract');
       const contract = new VentbuddyContract(walletClient);
       const { txHash, encryptedPostId, rawPostId } = await contract.createPost(postData);
@@ -448,7 +420,7 @@ export function useCreatePost() {
         rawPostId
       });
 
-      // 5. Store content in Supabase with the raw post ID
+      
       log.info('Step 5: Storing content in Supabase with raw post ID');
       const { contentStorage } = await import('../lib/supabase');
       const storedContent =         await contentStorage.storeEncryptedContent(
@@ -458,8 +430,8 @@ export function useCreatePost() {
           encryptedPreview,
           address,
           minTipAmount,
-          rawPostId, // Store the plain post ID as number
-          rawPostId.toString() // Use plain post ID as string for legacy field
+          rawPostId, 
+          rawPostId.toString() 
         );
 
       log.info('Content stored in Supabase', {
@@ -469,12 +441,12 @@ export function useCreatePost() {
         previewHash: storedContent.preview_hash.substring(0, 20) + '...'
       });
 
-      // 6. Log visibility event to Supabase with raw post ID
+      
       try {
         if (rawPostId !== undefined) {
           const { visibilityManager } = await import('../lib/visibility-manager');
           await visibilityManager.logVisibilityEvent({
-            postId: rawPostId.toString(), // Use raw post ID from smart contract
+            postId: rawPostId.toString(), 
             contentType: 'post',
             visibilityType: visibility,
             eventType: 'created',
@@ -489,7 +461,7 @@ export function useCreatePost() {
         }
       } catch (visibilityError) {
         log.warn('Failed to log visibility event', visibilityError);
-        // Don't throw error - post creation was successful
+        
       }
 
       return {
@@ -505,7 +477,7 @@ export function useCreatePost() {
     } catch (err: any) {
       log.error('Post creation failed', err);
       
-      // Provide more specific error messages
+      
       let userFriendlyError = 'Post creation failed';
       const errorMessage = err.message || err.toString() || '';
       
@@ -542,9 +514,7 @@ export function useCreatePost() {
   };
 }
 
-/**
- * Hook for creating replies with FHE encryption
- */
+
 export function useCreateReply() {
   const { address } = useAccount();
   const { walletClient } = useWallet();
@@ -575,16 +545,15 @@ export function useCreateReply() {
         unlockPrice
       });
 
-      // 1. Encrypt and store content in Supabase
+      
       log.info('Step 1: Encrypting and storing reply content');
       const { contentEncryptionService } = await import('../lib/content-encryption');
       const { fheEncryptionService } = await import('../lib/fhe-encryption');
       
-      // Create preview (first 100 characters)
+
       const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
       
-      // For replies, we need to get the next reply ID
-      // For now, we'll use a simple timestamp-based ID
+      
       const replyId = Math.floor(Date.now() / 1000) % 1000000; // Simple ID generation
       
       const contentData = await contentEncryptionService.encryptAndStoreReply(
@@ -592,7 +561,7 @@ export function useCreateReply() {
         replyId,
         content,
         preview,
-        address, // Use wallet address as replier ID for now
+        address, 
         address
       );
 
@@ -602,7 +571,7 @@ export function useCreateReply() {
         supabaseId: contentData.supabaseId
       });
 
-      // 2. Encrypt reply parameters using FHE
+      
       log.info('Step 2: Encrypting reply parameters with FHE');
       
       const [
@@ -618,18 +587,18 @@ export function useCreateReply() {
         unlockPrice: unlockPriceEncryption.encryptedValue.substring(0, 20) + '...'
       });
 
-      // 3. Prepare contract data
+      
       log.info('Step 3: Preparing contract data');
       const { VentbuddyContract } = await import('../lib/contract');
       
       const replyData = {
-        postId: postId, // Use plain post ID
+        postId: postId, 
         contentHash: contentData.contentHash as `0x${string}`,
         previewHash: contentData.previewHash as `0x${string}`,
         supabaseId: contentData.supabaseId,
         encryptedVisibility: visibilityEncryption.encryptedValue as `0x${string}`,
         visibilityProof: visibilityEncryption.proof as `0x${string}`,
-        minTipAmount: unlockPrice, // Use unlockPrice directly as minTipAmount
+        minTipAmount: unlockPrice, 
       };
 
       log.info('Contract data prepared', {
@@ -641,7 +610,7 @@ export function useCreateReply() {
         minTipAmount: replyData.minTipAmount
       });
 
-      // 4. Call smart contract
+      
       log.info('Step 4: Calling smart contract');
       const contract = new VentbuddyContract(walletClient);
       const txHash = await contract.replyToPost({
@@ -663,7 +632,7 @@ export function useCreateReply() {
         }
       });
 
-      // 5. Log visibility event to Supabase
+      
       try {
         const { visibilityManager } = await import('../lib/visibility-manager');
         await visibilityManager.logVisibilityEvent({
@@ -674,14 +643,14 @@ export function useCreateReply() {
           eventType: 'created',
           userAddress: address,
           encryptedVisibility: replyData.encryptedVisibility,
-          // Note: encryptedUnlockPrice is stored in encrypted_content table, not visibility_events
+          
           contentHash: contentData.contentHash,
           previewHash: contentData.previewHash,
           supabaseId: contentData.supabaseId
         });
       } catch (visibilityError) {
         log.info('Failed to log reply visibility event', visibilityError);
-        // Don't throw error - reply creation was successful
+        
       }
 
       return {
@@ -695,7 +664,7 @@ export function useCreateReply() {
     } catch (err: any) {
       log.error('Reply creation failed', err);
       
-      // Provide more specific error messages
+      
       let userFriendlyError = 'Reply creation failed';
       const errorMessage = err.message || err.toString() || '';
       
@@ -729,9 +698,7 @@ export function useCreateReply() {
   };
 }
 
-/**
- * Hook for tipping posts and replies
- */
+
 export function useTipping() {
   const { address } = useAccount();
   const { walletClient } = useWallet();
@@ -751,7 +718,7 @@ export function useTipping() {
     try {
       log.info('Starting tip process for post', { postId, amount });
       
-      // 1. Prepare contract data
+
       const contract = new (await import('../lib/contract')).VentbuddyContract(walletClient);
       
       log.info('Calling smart contract for tip');
@@ -759,10 +726,10 @@ export function useTipping() {
       
       log.info('Tip transaction successful', { txHash });
       
-      // Log tip access
+      
       const { contentStorage } = await import('../lib/supabase');
       await contentStorage.logAccess(
-        postId.toString(), // Use plain post ID as string
+        postId.toString(), 
         'post',
         address,
         'tip',
@@ -791,7 +758,7 @@ export function useTipping() {
     try {
       log.info('Starting tip process for reply', { postId, replyId, amount });
       
-      // 1. Prepare contract data
+      
       const contract = new (await import('../lib/contract')).VentbuddyContract(walletClient);
       
       log.info('Calling smart contract for reply tip');
@@ -803,7 +770,7 @@ export function useTipping() {
       
       log.info('Reply tip transaction successful', { txHash });
       
-      // Log tip access
+      
       const { contentStorage } = await import('../lib/supabase');
       await contentStorage.logAccess(
         replyId.toString(),
@@ -835,7 +802,7 @@ export function useTipping() {
     try {
       log.info('Starting content unlock process for post', { postId, amount });
       
-      // 1. Prepare contract data
+      
       const contract = new (await import('../lib/contract')).VentbuddyContract(walletClient);
       
       log.info('Calling smart contract for content unlock');
@@ -843,7 +810,7 @@ export function useTipping() {
       
       log.info('Content unlock transaction successful', { txHash });
       
-      // Log unlock access
+      
       const { contentStorage } = await import('../lib/supabase');
       await contentStorage.logAccess(
         postId.toString(),
@@ -853,16 +820,16 @@ export function useTipping() {
         amount
       );
 
-      // Log visibility unlock event
+      
       try {
         const { visibilityManager } = await import('../lib/visibility-manager');
         await visibilityManager.logVisibilityEvent({
           postId: postId.toString(),
           contentType: 'post',
-          visibilityType: 1, // Mark as public/unlocked
+          visibilityType: 1, 
           eventType: 'unlocked',
           userAddress: address,
-          contentHash: '0x', // We don't have this in unlock context
+          contentHash: '0x', 
           previewHash: '0x',
           supabaseId: postId.toString()
         });
@@ -889,14 +856,6 @@ export function useTipping() {
   };
 }
 
-/**
- * Hook for subscriptions
- */
-
-/**
- * Hook for reading contract data - DISABLED to avoid rate limiting
- * All contract read operations have been removed
- */
 export function useContractData() {
   const log = useLogger('useContractData');
   const [contractInfo, setContractInfo] = useState<any>(null);
@@ -908,11 +867,11 @@ export function useContractData() {
     setError(null);
 
     try {
-      // No contract queries - return default values
+
       const defaultInfo = {
         feeRecipient: '0x0000000000000000000000000000000000000000',
-        feeBasisPoints: 1000, // 10% default
-        currency: 'ETH', // Native ETH
+        feeBasisPoints: 1000, 
+        currency: 'ETH', 
         owner: '0xB9554026d4BF82C35e01241CC7a3706EaB91D788',
         paused: false,
       };
@@ -938,9 +897,7 @@ export function useContractData() {
   };
 }
 
-/**
- * Hook for fetching and managing posts from Supabase
- */
+
 export function usePosts() {
   const { address } = useAccount();
   const log = useLogger('usePosts');
@@ -956,19 +913,18 @@ export function usePosts() {
       log.info('Fetching posts from Supabase');
       const { contentStorage } = await import('../lib/supabase');
       
-      // Fetch recent content from Supabase
+      
       const encryptedContent = await contentStorage.getRecentContent(20);
       
       log.info('Fetched encrypted content', { count: encryptedContent.length });
 
-      // Decrypt content for display
+      
       const { contentEncryptionService } = await import('../lib/content-encryption');
       
-      // Get engagement stats and visibility data for all posts
-      // Use raw_post_id for engagement stats (they're stored by raw_post_id)
+      
       const rawPostIds = encryptedContent.map(content => content.raw_post_id).filter(Boolean);
       
-      // Fetch engagement stats from Supabase
+      
       const { data: engagementStats, error: statsError } = await supabase
         .from('post_stats')
         .select('*')
@@ -978,9 +934,8 @@ export function usePosts() {
         log.error('Error fetching engagement stats', statsError);
       }
 
-      // Fetch visibility data from Supabase
-      // Use encrypted_post_id for all queries since post_id column no longer exists
-      const encryptedPostIds = encryptedContent.map(c => c.encrypted_post_id).filter(Boolean);
+      
+      const encryptedPostIds = encryptedContent.map(c => String(c.encrypted_post_id)).filter(Boolean);
       
       log.debug('Encrypted post IDs from content', { encryptedPostIds });
       
@@ -988,11 +943,11 @@ export function usePosts() {
         .from('visibility_events')
         .select('*');
       
-      // Only query by encrypted_post_id since post_id column doesn't exist
+      
       if (encryptedPostIds.length > 0) {
         visibilityQuery = visibilityQuery.in('encrypted_post_id', encryptedPostIds);
       } else {
-        // If no encrypted_post_ids, return empty result
+        
         visibilityQuery = visibilityQuery.eq('encrypted_post_id', 'nonexistent');
       }
       
@@ -1012,7 +967,7 @@ export function usePosts() {
         }))
       });
       
-      // DEBUG: Check if any visibility events exist at all
+      
       const { data: allVisibilityEvents, error: allEventsError } = await supabase
         .from('visibility_events')
         .select('encrypted_post_id, visibility_type, content_type, created_at')
@@ -1027,21 +982,20 @@ export function usePosts() {
       const decryptedPosts = await Promise.all(
         encryptedContent.map(async (content) => {
           try {
-            // Decrypt the content
-            const { content: decryptedContent, preview: decryptedPreview } = 
+            
+            const { content: decryptedContent } = 
               await contentEncryptionService.decryptPostContent(content.id.toString());
             
-            // Find engagement stats for this post
+
             const postStats = engagementStats?.find(stat => stat.raw_post_id === content.raw_post_id);
             
-            // Find visibility data for this post (get the latest event)
-            // Only check encrypted_post_id since post_id column no longer exists
+              
             const postVisibilityEvents = visibilityData?.filter(event => 
-              content.encrypted_post_id && event.encrypted_post_id === content.encrypted_post_id
+              content.encrypted_post_id && String(event.encrypted_post_id) === String(content.encrypted_post_id)
             );
-            const latestVisibilityEvent = postVisibilityEvents?.[0]; // Already ordered by created_at desc
+            const latestVisibilityEvent = postVisibilityEvents?.[0]; 
             
-            // DEBUG: Log visibility event data
+              
             log.debug('Post visibility data', {
               postId: content.id,
               encryptedPostId: content.encrypted_post_id,
@@ -1052,11 +1006,11 @@ export function usePosts() {
               isLocked: latestVisibilityEvent?.visibility_type === 1
             });
             
-            // DEBUG: If no visibility events found, check if any exist for this specific ID
+              
             if (!postVisibilityEvents || postVisibilityEvents.length === 0) {
               log.debug('No visibility events found for this content. Checking if any exist at all');
               
-              // Check if there are any visibility events for this specific encrypted_post_id
+              
               const { data: specificEvents, error: specificError } = await supabase
                 .from('visibility_events')
                 .select('*')
@@ -1069,67 +1023,57 @@ export function usePosts() {
               });
             }
             
-            // Calculate engagement-based ranking score
-            // Priority: Replies > Upvotes > Downvotes (like X/Twitter algorithm)
+              
             const replyCount = postStats?.reply_count || 0;
             const upvoteCount = postStats?.upvote_count || 0;
             const downvoteCount = postStats?.downvote_count || 0;
             
-            // Ranking algorithm: Weighted score for content relevance
-            // Replies get highest weight (discussion = engagement)
-            // Upvotes get medium weight (approval)
-            // Downvotes get negative weight (disapproval)
+              
             const rankingScore = (replyCount * 10) + (upvoteCount * 3) - (downvoteCount * 1);
             
-            // Calculate net score (upvotes - downvotes) for backward compatibility
+              
             const netScore = upvoteCount - downvoteCount;
             
-            // Determine if content should be locked based on visibility
-            const visibility = latestVisibilityEvent?.visibility_type ?? 0; // Default to public
+              
+            const visibility = latestVisibilityEvent?.visibility_type ?? 0; 
             const isLocked = visibility === 1; // 1 = Tippable (locked), 0 = Public (unlocked)
             
-            // ARCHITECTURE FIX: Read min_tip_amount from encrypted_content table (immutable metadata)
-            // instead of visibility_events table (payment tracking)
+              
             const minTipAmount = (content as EncryptedContent & { min_tip_amount?: number }).min_tip_amount || 0;
             
-            // TEMPORARY FIX: If no visibility event exists but content has min_tip_amount > 0,
-            // assume it should be tippable (locked)
+              
             const shouldBeLocked = isLocked || (minTipAmount > 0 && !latestVisibilityEvent);
             
             if (minTipAmount > 0 && !latestVisibilityEvent) {
               log.debug('TEMPORARY FIX: Content has min_tip_amount but no visibility event. Assuming tippable');
             }
             
-            // Format for VentCard component
-            // CRITICAL: Use the actual raw_post_id from the database
-            // This is the encrypted post ID that the smart contract expects
             if (!content.raw_post_id) {
               log.error('Missing raw_post_id for post', { postId: content.id, message: 'Cannot use this post for smart contract operations!' });
-              // Skip this post entirely if raw_post_id is missing
               return null;
             }
             
             return {
-              rawPostId: content.raw_post_id, // Use actual plain post ID from database
-              author: 'Anon', // Author is encrypted, show as Anon
-              content: decryptedContent,
-              preview: decryptedPreview,
-              isLocked: shouldBeLocked,
-              tipAmount: minTipAmount, // Use actual min tip amount
-              likes: netScore, // Use net score as likes for now
+              rawPostId: content.raw_post_id, 
+              author: 'Anon', 
+              content: decryptedContent, 
+              preview: '[Content preview removed for security]',
+              isLocked: shouldBeLocked, 
+              tipAmount: minTipAmount, 
+              likes: netScore, 
               comments: postStats?.reply_count || 0,
               timestamp: new Date(content.created_at).toLocaleString(),
-              isPremium: false, // Mock premium status for now
+              isPremium: false, 
               contentHash: content.content_hash,
               previewHash: content.preview_hash,
               authorId: content.author_id,
               createdAt: content.created_at,
               updatedAt: content.updated_at,
-              minTipAmount: minTipAmount, // Use actual min tip amount
-              visibility: shouldBeLocked ? 1 : 0, // 1 = Tippable (locked), 0 = Public (unlocked)
-              visibilityEvent: latestVisibilityEvent, // Include full visibility event data
-              supabaseId: content.id.toString(), // Keep Supabase ID for engagement operations (fallback only)
-              // Engagement metrics for ranking
+              minTipAmount: minTipAmount, 
+              visibility: shouldBeLocked ? 1 : 0, 
+              visibilityEvent: latestVisibilityEvent, 
+              supabaseId: content.id.toString(), 
+             
               rankingScore: rankingScore,
               upvoteCount: upvoteCount,
               downvoteCount: downvoteCount,
@@ -1137,8 +1081,7 @@ export function usePosts() {
             };
           } catch (decryptError) {
             log.warn('Failed to decrypt content for post', { postId: content.id, error: decryptError });
-            // Return a fallback post if decryption fails
-            // Only check encrypted_post_id for fallback since post_id column no longer exists
+           
             const fallbackVisibilityEvents = visibilityData?.filter(event => 
               content.encrypted_post_id && event.encrypted_post_id === content.encrypted_post_id
             );
@@ -1155,21 +1098,21 @@ export function usePosts() {
             });
             const fallbackMinTipAmount = (content as EncryptedContent & { min_tip_amount?: number }).min_tip_amount || 0;
             
-            // Apply same logic as main case: if no visibility event but has min_tip_amount, assume tippable
+            
             const fallbackShouldBeLocked = (fallbackVisibility === 1) || (fallbackMinTipAmount > 0 && !fallbackLatestEvent);
             
-            // CRITICAL: Use the actual raw_post_id from the database
+           
             if (!content.raw_post_id) {
               log.error('Missing raw_post_id for fallback post', { postId: content.id, message: 'Cannot use this post for smart contract operations!' });
-              // Skip this post entirely if raw_post_id is missing
+             
               return null;
             }
             
             return {
-              rawPostId: content.raw_post_id, // Use actual plain post ID from database
+              rawPostId: content.raw_post_id, 
               author: 'Anon',
               content: 'This content could not be decrypted.',
-              preview: 'This content could not be decrypted.',
+              preview: '[Content preview removed for security]',
               isLocked: fallbackShouldBeLocked,
               tipAmount: fallbackMinTipAmount,
               likes: 0,
@@ -1182,10 +1125,10 @@ export function usePosts() {
               createdAt: content.created_at,
               updatedAt: content.updated_at,
               minTipAmount: fallbackMinTipAmount,
-              visibility: fallbackShouldBeLocked ? 1 : 0, // 1 = Tippable (locked), 0 = Public (unlocked)
+              visibility: fallbackShouldBeLocked ? 1 : 0, 
               decryptError: true,
-              supabaseId: content.id.toString(), // Keep Supabase ID for engagement operations
-              encryptedPostId: content.encrypted_post_id // Include legacy encrypted post ID
+              supabaseId: content.id.toString(), 
+              encryptedPostId: content.encrypted_post_id 
             };
           }
         })
@@ -1193,17 +1136,16 @@ export function usePosts() {
 
       log.info('Decrypted posts', { count: decryptedPosts.length });
       
-      // Filter out posts without raw_post_id and sort by ranking score
+
       const validPosts = decryptedPosts.filter(post => post !== null);
       
-      // Sort posts by ranking score (highest first) - like X/Twitter algorithm
       const sortedPosts = validPosts.sort((a, b) => {
-        // Primary sort: ranking score (replies > upvotes > downvotes)
+       
         if (b.rankingScore !== a.rankingScore) {
           return b.rankingScore - a.rankingScore;
         }
         
-        // Secondary sort: creation time (newer posts first if same ranking)
+       
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
@@ -1231,12 +1173,12 @@ export function usePosts() {
     fetchPosts();
   }, [fetchPosts]);
 
-  // Fetch posts on mount
+  
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
 
-  // Set up real-time subscriptions for new posts and visibility events
+  
   useEffect(() => {
     let subscription: any = null;
 
@@ -1244,16 +1186,14 @@ export function usePosts() {
       try {
         const { realtimeSubscriptions } = await import('../lib/supabase');
         
-        // Subscribe to new content updates
+        
         subscription = realtimeSubscriptions.subscribeToNewContent((payload) => {
           log.info('New post detected', payload);
           
-          // Refresh posts when new content is added
+          
           fetchPosts();
         });
 
-        // Initialize visibility event system
-        const { useVisibilityEvents } = await import('./useVisibilityEvents');
       } catch (error) {
         log.warn('Failed to set up real-time subscription', error);
       }
@@ -1261,7 +1201,7 @@ export function usePosts() {
 
     setupRealtimeSubscription();
 
-    // Cleanup subscription on unmount
+    
     return () => {
       if (subscription) {
         try {

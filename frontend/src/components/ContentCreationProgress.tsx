@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Progress } from './ui/progress';
-import { Badge } from './ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   FileText, 
   Lock, 
@@ -19,7 +19,7 @@ export interface ProgressStep {
   description: string;
   icon: React.ReactNode;
   status: 'pending' | 'in_progress' | 'completed' | 'error';
-  progress: number; // 0-100
+  progress: number; 
 }
 
 interface ContentCreationProgressProps {
@@ -77,7 +77,6 @@ export function ContentCreationProgress({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Overall Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Overall Progress</span>
@@ -86,7 +85,6 @@ export function ContentCreationProgress({
           <Progress value={overallProgress} className="h-2" />
         </div>
 
-        {/* Error Display */}
         {error && (
           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
             <div className="flex items-center gap-2 text-red-400">
@@ -97,7 +95,6 @@ export function ContentCreationProgress({
           </div>
         )}
 
-        {/* Steps */}
         <div className="space-y-2">
           {steps.map((step, index) => (
             <div 
@@ -132,7 +129,6 @@ export function ContentCreationProgress({
           ))}
         </div>
 
-        {/* Security Notice */}
         <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-md">
           <div className="flex items-center gap-2 text-blue-400 mb-1">
             <Shield className="h-3 w-3" />
@@ -147,7 +143,6 @@ export function ContentCreationProgress({
   );
 }
 
-// Default steps for content creation
 export const defaultContentCreationSteps: ProgressStep[] = [
   {
     id: 'writing',

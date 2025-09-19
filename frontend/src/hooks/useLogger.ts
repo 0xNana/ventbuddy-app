@@ -1,13 +1,7 @@
 import { useCallback } from 'react';
 import { logger, LogLevel } from '../lib/logger';
 
-/**
- * React hook for using the centralized logger in components
- * 
- * Usage:
- * const log = useLogger('ComponentName');
- * log.info('User clicked button', { buttonId: 'submit' });
- */
+
 export function useLogger(componentName: string) {
   const log = useCallback(
     (level: LogLevel, message: string, data?: any) => {
@@ -22,7 +16,7 @@ export function useLogger(componentName: string) {
     warn: useCallback((message: string, data?: any) => log('warn', message, data), [log]),
     error: useCallback((message: string, data?: any) => log('error', message, data), [log]),
     
-    // Convenience methods
+    
     api: useCallback((method: string, url: string, data?: any) => {
       logger.api(method, url, data, componentName);
     }, [componentName]),

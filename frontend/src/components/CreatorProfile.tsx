@@ -5,8 +5,8 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { 
   Users
 } from 'lucide-react';
-import { useDisplayName } from '../hooks/useUserProfile';
-import { supabase } from '../lib/supabase';
+import { useDisplayName } from '@/hooks/useUserProfile';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface CreatorProfileProps {
@@ -23,10 +23,8 @@ export function CreatorProfile({
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Don't show subscription options if user is the creator
   const isOwnProfile = address?.toLowerCase() === creatorAddress.toLowerCase();
 
-  // Fetch creator data
   useEffect(() => {
     const fetchCreatorData = async () => {
       if (!creatorAddress) {
@@ -39,12 +37,10 @@ export function CreatorProfile({
       try {
         console.log('📊 Fetching creator data for:', creatorAddress);
 
-        // Fetch subscription data for this creator - SIMPLIFIED: Use placeholder since access_logs has schema issues
-        const subscriptionData: any[] = []; // Placeholder - could be enhanced later
+        const subscriptionData: any[] = [];
         
         console.log('📊 Creator profile - using placeholder values for subscription data due to access_logs schema issues');
 
-        // Calculate subscriber count from subscriptions table
         const { data: subscriptionCountData, error: countError } = await supabase
           .from('subscriptions')
           .select('subscriber_address')
@@ -93,7 +89,6 @@ export function CreatorProfile({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Creator Header */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">

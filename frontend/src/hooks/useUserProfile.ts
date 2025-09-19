@@ -25,9 +25,7 @@ export interface CreateProfileData {
   is_profile_public?: boolean;
 }
 
-/**
- * Hook for managing user profiles and usernames
- */
+
 export function useUserProfile() {
   const { address } = useAccount();
   const log = useLogger('useUserProfile');
@@ -186,7 +184,7 @@ export function useUserProfile() {
     }
   }, [address]);
 
-  // Fetch profile on mount and when address changes
+
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -202,9 +200,7 @@ export function useUserProfile() {
   };
 }
 
-/**
- * Hook for getting display name for any wallet address
- */
+
 export function useDisplayName(walletAddress: string) {
   const log = useLogger('useDisplayName');
   const [displayName, setDisplayName] = useState<string>('');
@@ -222,7 +218,7 @@ export function useDisplayName(walletAddress: string) {
     try {
       log.debug('Fetching display name', { walletAddress });
 
-      // Try to get user profile directly first
+      
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('username, display_name, is_username_public, is_profile_public')
@@ -243,14 +239,14 @@ export function useDisplayName(walletAddress: string) {
           isProfilePublic: profileData.is_profile_public
         });
         
-        // If username is public, return username
+        
         if (profileData.is_username_public && profileData.username) {
           log.debug('Using public username', { username: profileData.username });
           setDisplayName(profileData.username);
           return;
         }
         
-        // If profile is public, return display name or username
+        
         if (profileData.is_profile_public) {
           const displayName = profileData.display_name || profileData.username || 'Anon';
           log.debug('Using public profile display name', { displayName });
@@ -263,13 +259,13 @@ export function useDisplayName(walletAddress: string) {
         log.debug('No profile data found for wallet', { walletAddress });
       }
 
-      // Default to "Anon" if no profile or not public
+      
       setDisplayName('Anon');
       log.debug('Display name set to Anon (no public profile found)');
 
     } catch (err) {
       log.error('Failed to fetch display name', err);
-      // Fallback to "Anon"
+      
       setDisplayName('Anon');
     } finally {
       setIsLoading(false);

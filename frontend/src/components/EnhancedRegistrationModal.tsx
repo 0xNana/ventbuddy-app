@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Shield, User, Lock, CheckCircle, Zap, Key, Database, Wallet } from "lucide-react";
+import { Shield, User, CheckCircle, Zap, Key, Database, Wallet } from "lucide-react";
 import { useUserRegistration } from "@/hooks/useContract";
 import { useFHEEncryption, fheEncryptionService } from "@/lib/fhe-encryption";
-import { toast } from "sonner";
+import { safeToast } from "@/lib/safe-toast";
 
 interface EnhancedRegistrationModalProps {
   isOpen: boolean;
@@ -79,14 +79,12 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
 
   const [steps, setSteps] = useState(registrationSteps);
 
-  // Update step status
   const updateStepStatus = (stepId: string, status: StepStatus) => {
     setSteps(prev => prev.map(step => 
       step.id === stepId ? { ...step, status } : step
     ));
   };
 
-  // Update progress
   const updateProgress = (stepIndex: number) => {
     const progress = ((stepIndex + 1) / steps.length) * 100;
     setRegistrationProgress(progress);
@@ -94,7 +92,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
   };
 
   const handleRegister = async () => {
-    // Use setTimeout to ensure state updates happen after render
     setTimeout(async () => {
       setIsRegistering(true);
       setRegistrationProgress(0);
@@ -103,7 +100,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
       try {
         console.log('🚀 Starting enhanced FHE registration process...');
         
-        // Step 1: Check FHE Service
         updateStepStatus('fhe-init', 'in_progress');
         updateProgress(0);
         
@@ -112,9 +108,8 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
         }
         
         updateStepStatus('fhe-init', 'completed');
-        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UX
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Step 2: Generate FHE Data
         updateStepStatus('encrypt-address', 'in_progress');
         updateProgress(1);
         
@@ -125,11 +120,9 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
         updateStepStatus('encrypt-address', 'completed');
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Step 3: Wallet Check
         updateStepStatus('wallet-connect', 'in_progress');
         updateProgress(2);
         
-        // Check if we have a connected wallet
         if (!userAddress) {
           throw new Error('Wallet not connected. Please connect your wallet first.');
         }
@@ -137,23 +130,19 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
         updateStepStatus('wallet-connect', 'completed');
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Step 4: Contract Registration
         updateStepStatus('contract-register', 'in_progress');
         updateProgress(3);
         
         console.log('📝 Registering with smart contract...');
         
-        // No timeout - let it run until completion
         const txHash = await registerUser(userAddress);
         
         updateStepStatus('contract-register', 'completed');
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Step 5: Supabase Sync (handled by registerUser hook)
         updateStepStatus('supabase-sync', 'in_progress');
         updateProgress(4);
         
-        // Simulate Supabase sync completion
         await new Promise(resolve => setTimeout(resolve, 1000));
         updateStepStatus('supabase-sync', 'completed');
         updateProgress(5);
@@ -161,39 +150,33 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
         setIsRegistered(true);
         
         if (txHash === 'already_registered') {
-          toast.success('🎉 Account synced! You were already registered in the contract.');
+          safeToast.success('🎉 Account synced! You were already registered in the contract.');
         } else {
-          toast.success('🎉 Successfully registered! You can now use all Ventbuddy features.');
+          safeToast.success('🎉 Successfully registered! You can now use all Ventbuddy features.');
         }
         
-        // Don't auto-close - let user close manually after reading the data
         
       } catch (error: any) {
         console.error('Enhanced registration error:', error);
         
-        // Update current step to error
         if (currentStep < steps.length) {
           updateStepStatus(steps[currentStep].id, 'error');
         }
         
-        // Check if this is the "User already registered" error
         const errorMessage = error.message || error.toString() || '';
         if (errorMessage.includes('0xb9688461') || 
             errorMessage.includes('User already registered') ||
             errorMessage.includes('simulating the action') ||
             errorMessage.includes('executing calls')) {
           
-          // This is actually a success case - user is already registered
-          toast.success('🎉 Account synced! You were already registered in the contract.');
+          safeToast.success('🎉 Account synced! You were already registered in the contract.');
           setIsRegistered(true);
           
-          // Mark all steps as completed
           setSteps(prev => prev.map(step => ({ ...step, status: 'completed' as StepStatus })));
           setRegistrationProgress(100);
           
-          // Don't auto-close - let user close manually after reading the data
         } else {
-          toast.error(`Registration failed: ${errorMessage}`);
+          safeToast.error(`Registration failed: ${errorMessage}`);
         }
       } finally {
         setIsRegistering(false);
@@ -242,7 +225,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
           </DialogHeader>
           
           <div className="space-y-6">
-            {/* Success Animation */}
             <div className="text-center space-y-4">
               <div className="p-6 bg-green-50 dark:bg-green-950 rounded-lg">
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
@@ -253,7 +235,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
               </div>
             </div>
             
-            {/* FHE Data Summary */}
             {fheData.encryptedAddress && (
               <Card>
                 <CardHeader>
@@ -277,7 +258,7 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
                       size="sm"
                       onClick={() => {
                         navigator.clipboard.writeText(fheData.encryptedAddress);
-                        toast.success('Encrypted address copied to clipboard!');
+                        safeToast.success('Encrypted address copied to clipboard!');
                       }}
                       className="text-xs h-6"
                     >
@@ -296,7 +277,7 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
                         size="sm"
                         onClick={() => {
                           navigator.clipboard.writeText(fheData.proof);
-                          toast.success('Proof copied to clipboard!');
+                          safeToast.success('Proof copied to clipboard!');
                         }}
                         className="text-xs h-6"
                       >
@@ -308,7 +289,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
               </Card>
             )}
             
-            {/* Features Available */}
             <div className="space-y-2">
               <Badge variant="default" className="bg-primary text-primary-foreground">
                 <Shield className="h-3 w-3 mr-1" />
@@ -320,7 +300,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
             </div>
           </div>
           
-          {/* Close Button */}
           <DialogFooter>
             <Button onClick={onClose} className="w-full">
               <CheckCircle className="h-4 w-4 mr-2" />
@@ -346,7 +325,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Registration Progress</span>
@@ -355,7 +333,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
             <Progress value={registrationProgress} className="h-2" />
           </div>
 
-          {/* Registration Steps */}
           <div className="space-y-3">
             {steps.map((step, index) => (
               <div key={step.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
@@ -377,7 +354,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
             ))}
           </div>
 
-          {/* User Address */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
@@ -392,7 +368,6 @@ export const EnhancedRegistrationModal = ({ isOpen, onClose, userAddress }: Enha
             </CardContent>
           </Card>
 
-          {/* FHE Service Status */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">

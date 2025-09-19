@@ -5,9 +5,9 @@ import { Lock } from "lucide-react";
 interface PremiumModalProps {
   isOpen: boolean;
   onClose: () => void;
-  creatorId: string; // Required - the creator's wallet address
-  creatorName: string; // Required - the creator's display name
-  creatorAvatar?: string; // Optional - creator's avatar
+  creatorId: string;
+  creatorName: string;
+  creatorAvatar?: string;
 }
 
 export const PremiumModal = ({ isOpen, onClose, creatorId, creatorName, creatorAvatar }: PremiumModalProps) => {

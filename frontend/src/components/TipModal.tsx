@@ -16,13 +16,12 @@ interface TipModalProps {
   onClose: () => void;
   onTip: (amount: number) => void;
   author: string;
-  preview: string;
-  isUnlock?: boolean; // Whether this is for unlocking content or general tipping
+  isUnlock?: boolean; 
 }
 
-export const TipModal = ({ isOpen, onClose, onTip, author, preview, isUnlock = false }: TipModalProps) => {
-  const [selectedAmount, setSelectedAmount] = useState(0.01); // Default to 0.01 ETH
-  const tipAmounts = [0.001, 0.01, 0.05, 0.1, 0.5]; // ETH amounts
+export const TipModal = ({ isOpen, onClose, onTip, author, isUnlock = false }: TipModalProps) => {
+  const [selectedAmount, setSelectedAmount] = useState(0.01); 
+  const tipAmounts = [0.001, 0.01, 0.05, 0.1, 0.5]; 
 
   const handleTip = () => {
     onTip(selectedAmount);
@@ -56,14 +55,14 @@ export const TipModal = ({ isOpen, onClose, onTip, author, preview, isUnlock = f
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Preview */}
+            
             <div className="p-4 rounded-lg bg-background/50 border border-border/50">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="border-primary/50">
                   {isUnlock ? (
                     <>
                       <Lock className="h-3 w-3 mr-1" />
-                      Preview
+                      Private Content
                     </>
                   ) : (
                     <>
@@ -73,12 +72,16 @@ export const TipModal = ({ isOpen, onClose, onTip, author, preview, isUnlock = f
                   )}
                 </Badge>
               </div>
-              <p className={`text-sm text-muted-foreground ${isUnlock ? 'filter blur-sm' : ''}`}>
-                {preview}...
+              <p className="text-sm text-muted-foreground italic">
+                {isUnlock ? (
+                  '[Private content - tip to unlock]'
+                ) : (
+                  '[Content preview removed for security]'
+                )}
               </p>
             </div>
 
-            {/* Tip Amount Selection */}
+            
             <div>
               <p className="text-sm font-medium mb-3">Select tip amount:</p>
               <div className="grid grid-cols-5 gap-2">
@@ -96,7 +99,7 @@ export const TipModal = ({ isOpen, onClose, onTip, author, preview, isUnlock = f
               </div>
             </div>
 
-            {/* Benefits */}
+            
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
                 {isUnlock ? (

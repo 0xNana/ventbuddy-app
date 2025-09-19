@@ -5,19 +5,14 @@ import { contentEncryptionService } from '../lib/content-encryption';
 import { toast } from 'sonner';
 import { useLogger } from './useLogger';
 
-/**
- * Encrypted replies system using the encrypted_replies table
- * Uses the same encryption service as main posts
- */
+
 export function useSimpleReplies() {
   const { address } = useAccount();
   const log = useLogger('useSimpleReplies');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Get encrypted address for the current user
-   */
+
   const getEncryptedAddress = useCallback(async (): Promise<string | null> => {
     if (!address) return null;
     
@@ -26,10 +21,15 @@ export function useSimpleReplies() {
         .from('user_sessions')
         .select('encrypted_address')
         .eq('wallet_address', address)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Failed to get encrypted address:', error);
+        return null;
+      }
+      
+      if (!userSession) {
+        console.warn('User not registered yet - no encrypted address available');
         return null;
       }
 
@@ -40,9 +40,7 @@ export function useSimpleReplies() {
     }
   }, [address]);
 
-  /**
-   * Create an encrypted reply using the encrypted_replies table
-   */
+
   const createReply = useCallback(async (
     rawPostId: string,
     content: string,
@@ -69,24 +67,24 @@ export function useSimpleReplies() {
         author: address
       });
 
-      // Get encrypted address for privacy
+     
       const encryptedAddress = await getEncryptedAddress();
       if (!encryptedAddress) {
         throw new Error('Failed to get encrypted address. Please ensure you are registered.');
       }
 
-      // Create a preview (first 100 characters)
+      
       const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
 
-      // Encrypt the content and preview using the same service as main posts
+     
       const encryptedContent = contentEncryptionService.encryptContent(content);
       const encryptedPreview = contentEncryptionService.encryptContent(preview);
 
-      // Generate hashes
+      
       const contentHash = await contentEncryptionService.generateHash(content);
       const previewHash = await contentEncryptionService.generateHash(preview);
 
-      // Generate a simple reply ID (we'll use timestamp for now)
+      
       const replyId = Date.now();
 
       log.debug('Content encrypted', {
@@ -97,12 +95,12 @@ export function useSimpleReplies() {
         replyId
       });
 
-      // Insert encrypted reply into encrypted_replies table
+      
       const { data, error: insertError } = await supabase
         .from('encrypted_replies')
         .insert({
           post_id: rawPostId,
-          raw_post_id: parseInt(rawPostId.toString()), // Convert to bigint
+          raw_post_id: parseInt(rawPostId.toString()), 
           reply_id: replyId,
           content_hash: contentHash,
           preview_hash: previewHash,
@@ -119,7 +117,7 @@ export function useSimpleReplies() {
         throw new Error(`Failed to create reply: ${insertError.message}`);
       }
 
-      // Create reply stats entry
+      
       const { error: statsError } = await supabase
         .from('reply_stats')
         .insert({
@@ -133,7 +131,6 @@ export function useSimpleReplies() {
 
       if (statsError) {
         console.warn('Failed to create reply stats:', statsError);
-        // Don't throw error here, reply creation was successful
       }
 
       log.info('Encrypted reply created successfully', { replyId: data?.id });
@@ -151,10 +148,7 @@ export function useSimpleReplies() {
     }
   }, [address, getEncryptedAddress]);
 
-  /**
-   * Fetch replies for a post from encrypted_replies table
-   * Uses the SAME decryption service as main posts
-   */
+  
   const getReplies = useCallback(async (rawPostId: string) => {
     try {
       const { data, error } = await supabase
@@ -167,7 +161,7 @@ export function useSimpleReplies() {
         throw new Error(`Failed to fetch replies: ${error.message}`);
       }
 
-      // Decrypt replies using the SAME service as main posts
+      
       const decryptedReplies = await Promise.all(
         (data || []).map(async (reply) => {
           log.debug('Processing encrypted reply', {
@@ -179,18 +173,18 @@ export function useSimpleReplies() {
           });
 
           try {
-            // Decrypt the encrypted content using the same service as main posts
+            
             log.debug('Decrypting reply using main post service');
             const decryptedContent = contentEncryptionService.decryptContent(reply.encrypted_content);
             log.debug('Reply decrypted successfully', {
               length: decryptedContent.length
             });
             
-            // Transform to match the expected interface
+            
             return {
               id: reply.id.toString(),
               raw_post_id: reply.post_id,
-              author_id: reply.replier_id, // Use replier_id as author_id
+              author_id: reply.replier_id, 
               content: decryptedContent,
               encrypted_content: reply.encrypted_content,
               encrypted_author_id: reply.replier_id,
@@ -215,7 +209,7 @@ export function useSimpleReplies() {
         })
       );
 
-      // For now, return flat structure (no nesting since encrypted_replies doesn't support parent_reply_id)
+      
       return decryptedReplies;
     } catch (err) {
       console.error('❌ Failed to fetch replies:', err);
@@ -223,9 +217,7 @@ export function useSimpleReplies() {
     }
   }, []);
 
-  /**
-   * Decrypt a single reply's content using the SAME service as main posts
-   */
+  
   const decryptReplyContent = useCallback((reply: any): string => {
     if (reply.encrypted_content) {
       try {
@@ -238,9 +230,7 @@ export function useSimpleReplies() {
     return reply.content || '';
   }, []);
 
-  /**
-   * Get reply counts for a post from reply_stats table
-   */
+  
   const getReplyCounts = useCallback(async (rawPostId: string) => {
     try {
       const { data, error } = await supabase
@@ -269,9 +259,7 @@ export function useSimpleReplies() {
     }
   }, []);
 
-  /**
-   * Get reply stats for a specific reply
-   */
+    
   const getReplyStats = useCallback(async (postId: number, replyId: number) => {
     try {
       const { data, error } = await supabase

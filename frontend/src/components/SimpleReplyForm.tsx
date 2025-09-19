@@ -48,7 +48,6 @@ export function SimpleReplyForm({ rawPostId, parentReplyId, onReplyCreated, onCa
       
       console.log('✅ Encrypted reply created successfully:', result);
       
-      // Reset form
       setContent('');
       
       if (onReplyCreated) {
@@ -56,7 +55,6 @@ export function SimpleReplyForm({ rawPostId, parentReplyId, onReplyCreated, onCa
       }
     } catch (err) {
       console.error('❌ Encrypted reply submission failed:', err);
-      // Error is already handled by the hook and shown via toast
     } finally {
       setIsSubmitting(false);
     }

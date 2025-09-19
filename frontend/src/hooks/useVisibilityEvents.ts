@@ -3,38 +3,30 @@ import { useAccount } from 'wagmi';
 import { visibilityManager } from '../lib/visibility-manager';
 import { supabase } from '../lib/supabase';
 
-/**
- * Hook for managing visibility events and real-time updates
- * Combines Supabase Realtime with contract event listening
- */
 export function useVisibilityEvents() {
   const { address, isConnected } = useAccount();
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Get visibility for a post or reply
-   */
+  
   const getVisibility = useCallback(async (postId: number, replyId?: number) => {
     try {
       return await visibilityManager.getVisibility(postId, replyId);
     } catch (err) {
       console.error('Error getting visibility:', err);
-      // Defer state update to avoid React render warnings
+      
       setTimeout(() => {
         setError(err instanceof Error ? err.message : 'Failed to get visibility');
       }, 0);
       return {
-        visibility: 1, // Default to public
+        visibility: 1, 
         eventType: 'created',
         isCached: false
       };
     }
   }, []);
 
-  /**
-   * Log a visibility event
-   */
+  
   const logVisibilityEvent = useCallback(async (data: {
     postId: number;
     replyId?: number;
@@ -52,16 +44,14 @@ export function useVisibilityEvents() {
       await visibilityManager.logVisibilityEvent(data);
     } catch (err) {
       console.error('Error logging visibility event:', err);
-      // Defer state update to avoid React render warnings
+      
       setTimeout(() => {
         setError(err instanceof Error ? err.message : 'Failed to log visibility event');
       }, 0);
     }
   }, []);
 
-  /**
-   * Clear visibility cache
-   */
+  
   const clearCache = useCallback((postId?: number, replyId?: number) => {
     if (postId !== undefined) {
       visibilityManager.clearCache(postId, replyId);
@@ -70,16 +60,12 @@ export function useVisibilityEvents() {
     }
   }, []);
 
-  /**
-   * Get cache statistics
-   */
+  
   const getCacheStats = useCallback(() => {
     return visibilityManager.getCacheStats();
   }, []);
 
-  /**
-   * Set up real-time subscriptions
-   */
+  
   useEffect(() => {
     if (!isConnected || !address) {
       setIsListening(false);
@@ -88,7 +74,7 @@ export function useVisibilityEvents() {
 
     const setupRealtimeSubscriptions = async () => {
       try {
-        // Set up Supabase real-time subscription for visibility events
+        
         const subscription = supabase
           .channel('visibility_events')
           .on(
@@ -109,7 +95,7 @@ export function useVisibilityEvents() {
                   event_type
                 );
 
-                // Emit custom event for components to listen to
+                
                 window.dispatchEvent(new CustomEvent('visibilityUpdated', {
                   detail: {
                     postId: post_id,
@@ -125,14 +111,13 @@ export function useVisibilityEvents() {
           )
           .subscribe();
 
-        // Defer state updates to avoid React render warnings
+        
         setTimeout(() => {
           setIsListening(true);
           setError(null);
         }, 0);
       } catch (err) {
         console.error('❌ Failed to set up visibility subscriptions:', err);
-        // Defer state updates to avoid React render warnings
         setTimeout(() => {
           setError(err instanceof Error ? err.message : 'Failed to set up subscriptions');
           setIsListening(false);
@@ -142,24 +127,20 @@ export function useVisibilityEvents() {
 
     setupRealtimeSubscriptions();
 
-    // Cleanup function
+   
     return () => {
-      // Cleanup is handled automatically by Supabase when the component unmounts
-      // Defer state update to avoid React render warnings
+      
       setTimeout(() => {
         setIsListening(false);
       }, 0);
     };
   }, [isConnected, address]);
 
-  /**
-   * Set up visibility manager event listeners
-   */
+
   useEffect(() => {
     const handleVisibilityUpdate = (data: any) => {
-      // Defer to avoid React render warnings
       setTimeout(() => {
-        // You can emit custom events here if needed
+       
         window.dispatchEvent(new CustomEvent('visibilityUpdated', { detail: data }));
       }, 0);
     };
@@ -181,9 +162,7 @@ export function useVisibilityEvents() {
   };
 }
 
-/**
- * Hook for getting visibility of a specific post/reply
- */
+
 export function usePostVisibility(postId: number, replyId?: number) {
   const { getVisibility } = useVisibilityEvents();
   const [visibility, setVisibility] = useState<{
@@ -210,17 +189,17 @@ export function usePostVisibility(postId: number, replyId?: number) {
     }
   }, [postId, replyId, getVisibility]);
 
-  // Fetch visibility on mount and when postId/replyId changes
+  
   useEffect(() => {
     fetchVisibility();
   }, [fetchVisibility]);
 
-  // Listen for visibility updates
+  
   useEffect(() => {
     const handleVisibilityUpdate = (event: CustomEvent) => {
       const { postId: updatedPostId, replyId: updatedReplyId } = event.detail;
       
-      // Check if this update is for our post/reply
+      
       if (updatedPostId === postId && updatedReplyId === replyId) {
         fetchVisibility();
       }

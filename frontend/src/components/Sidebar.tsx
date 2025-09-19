@@ -1,12 +1,10 @@
-import React from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Home, 
   Plus, 
   User, 
-  MessageSquare, 
-  Settings,
   LogOut,
   Wallet
 } from 'lucide-react';
@@ -53,7 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <div className="w-full border-r border-border/50 h-full flex flex-col">
-      {/* Header */}
       <div className="p-6 border-b border-border/50">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center">
@@ -66,7 +63,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         </div>
       </div>
 
-      {/* Navigation Menu */}
       <div className="flex-1 p-4 space-y-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -93,10 +89,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         })}
       </div>
 
-      {/* User Section */}
       {isConnected && address && (
         <div className="p-4 border-t border-border/50 space-y-3">
-          {/* Wallet Info */}
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
             <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
               <Wallet className="h-4 w-4 text-green-500" />
@@ -111,7 +105,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             </div>
           </div>
 
-          {/* Disconnect Button */}
           <Button
             variant="outline"
             size="sm"
@@ -124,7 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         </div>
       )}
 
-      {/* Footer */}
       <div className="p-4 border-t border-border/50">
         <div className="text-center">
         </div>

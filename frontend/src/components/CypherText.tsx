@@ -19,17 +19,14 @@ export const CypherText: React.FC<CypherTextProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
 
-  // Cypher characters for the scrambling effect
   const cypherChars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+-=[]{}|;:,.<>?';
 
   useEffect(() => {
     if (currentIndex < text.length) {
       const timer = setTimeout(() => {
-        // Show random cypher characters while typing
         const randomChar = cypherChars[Math.floor(Math.random() * cypherChars.length)];
         setDisplayedText(prev => prev + randomChar);
         
-        // After a short delay, replace with the actual character
         setTimeout(() => {
           setDisplayedText(prev => prev.slice(0, -1) + text[currentIndex]);
           setCurrentIndex(prev => prev + 1);
@@ -44,7 +41,6 @@ export const CypherText: React.FC<CypherTextProps> = ({
     }
   }, [currentIndex, text, speed, isComplete, onComplete]);
 
-  // Check if this is the final message (contains "System Ready", "Welcome", or "Access granted")
   const isFinalMessage = text.includes("System Ready") || text.includes("Welcome") || text.includes("Access granted");
   
   return (
@@ -83,13 +79,13 @@ export const CypherSequence: React.FC<CypherSequenceProps> = ({
     if (currentMessageIndex < messages.length - 1) {
       setTimeout(() => {
         setCurrentMessageIndex(prev => prev + 1);
-      }, 1500); // Increased delay to 1.5 seconds
+      }, 1500);
     } else {
       log.info('All messages completed, calling onComplete', { totalMessages: messages.length });
       setIsSequenceComplete(true);
       setTimeout(() => {
         onComplete?.();
-      }, 2000); // Wait 2 seconds after last message before calling onComplete
+      }, 2000);
     }
   };
 

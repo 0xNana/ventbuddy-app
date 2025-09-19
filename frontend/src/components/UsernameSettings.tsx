@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -33,7 +33,7 @@ export function UsernameSettings() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize form data when profile loads
+  
   React.useEffect(() => {
     if (profile) {
       setFormData({
@@ -49,7 +49,7 @@ export function UsernameSettings() {
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Check username availability when username changes
+    
     if (field === 'username' && typeof value === 'string') {
       if (value.length >= 3) {
         checkUsernameAvailabilityLocal(value);
@@ -79,7 +79,7 @@ export function UsernameSettings() {
 
   const handleSave = async () => {
     if (!profile) {
-      // Create new profile
+      
       setIsSaving(true);
       try {
         await createProfile(formData);
@@ -90,7 +90,7 @@ export function UsernameSettings() {
         setIsSaving(false);
       }
     } else {
-      // Update existing profile
+      
       setIsSaving(true);
       try {
         await updateProfile(formData);
@@ -178,7 +178,7 @@ export function UsernameSettings() {
           </Alert>
         )}
 
-        {/* Username */}
+        
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
           <div className="space-y-1">
@@ -197,7 +197,7 @@ export function UsernameSettings() {
           </p>
         </div>
 
-        {/* Display Name */}
+        
         <div className="space-y-2">
           <Label htmlFor="display_name">Display Name</Label>
           <Input
@@ -211,7 +211,7 @@ export function UsernameSettings() {
           </p>
         </div>
 
-        {/* Bio */}
+        
         <div className="space-y-2">
           <Label htmlFor="bio">Bio</Label>
           <Textarea
@@ -226,7 +226,7 @@ export function UsernameSettings() {
           </p>
         </div>
 
-        {/* Privacy Settings */}
+        
         <div className="space-y-4">
           <h4 className="font-medium">Privacy Settings</h4>
           
@@ -263,7 +263,7 @@ export function UsernameSettings() {
           </div>
         </div>
 
-        {/* Privacy Notice */}
+        
         <Alert>
           <AlertDescription>
             <strong>Privacy Notice:</strong> Your wallet address is always private. 
@@ -272,7 +272,7 @@ export function UsernameSettings() {
           </AlertDescription>
         </Alert>
 
-        {/* Save Button */}
+        
         <Button 
           onClick={handleSave}
           disabled={isSaving || (formData.username && usernameAvailable === false)}
@@ -288,7 +288,7 @@ export function UsernameSettings() {
           )}
         </Button>
 
-        {/* Current Status */}
+        
         {profile && (
           <div className="p-4 bg-muted/50 rounded-lg">
             <h4 className="font-medium mb-2">Current Status</h4>

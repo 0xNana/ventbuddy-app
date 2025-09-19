@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
 interface PostStats {
-  raw_post_id: number; // Plain uint64 ID from smart contract (primary key)
+  raw_post_id: number; 
   upvote_count: number;
   downvote_count: number;
   reply_count: number;
@@ -20,7 +20,7 @@ interface ReplyStats {
 }
 
 interface UserEngagement {
-  raw_post_id: number; // Plain uint64 ID from smart contract
+  raw_post_id: number; 
   user_encrypted_id: string;
   engagement_type: 'upvote' | 'downvote';
   created_at: string;
@@ -30,7 +30,7 @@ export function useEngagement() {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get post statistics by raw_post_id
+  
   const getPostStats = useCallback(async (rawPostId: number): Promise<PostStats | null> => {
     try {
       const { data, error } = await supabase
@@ -57,7 +57,7 @@ export function useEngagement() {
     }
   }, []);
 
-  // Get multiple post statistics by raw_post_ids
+  
   const getMultiplePostStats = useCallback(async (rawPostIds: number[]): Promise<PostStats[]> => {
     try {
       const { data, error } = await supabase
@@ -70,7 +70,7 @@ export function useEngagement() {
         return [];
       }
 
-      // Create default stats for posts that don't have stats yet
+      
       const existingStats = data || [];
       const existingRawPostIds = existingStats.map(stat => stat.raw_post_id);
       const missingRawPostIds = rawPostIds.filter(id => !existingRawPostIds.includes(id));
@@ -90,20 +90,20 @@ export function useEngagement() {
     }
   }, []);
 
-  // Upvote a post
+  
   const upvotePost = useCallback(async (rawPostId: number, userEncryptedId: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Use rawPostId as the primary identifier
+      
       const rawPostIdValue = parseInt(rawPostId.toString());
       
-      // Validate values
+      
       if (!rawPostIdValue || isNaN(rawPostIdValue) || rawPostIdValue <= 0) {
         console.error('❌ Invalid rawPostId value:', { rawPostId, rawPostIdValue });
         return false;
       }
 
-      // Check if user already upvoted this post
+      
       const { data: existingUpvote, error: checkError } = await supabase
         .from('post_engagement')
         .select('id')
@@ -118,7 +118,7 @@ export function useEngagement() {
       }
 
       if (existingUpvote) {
-        // Remove upvote
+        
         const { error: deleteError } = await supabase
           .from('post_engagement')
           .delete()
@@ -131,12 +131,12 @@ export function useEngagement() {
           return false;
         }
 
-        // Database triggers will automatically update post_stats
+
 
         toast.success('Upvote removed');
-        return false; // User removed upvote
+        return false; 
       } else {
-        // Remove any existing downvote first (mutually exclusive voting)
+        
         await supabase
           .from('post_engagement')
           .delete()
@@ -144,7 +144,7 @@ export function useEngagement() {
           .eq('user_encrypted_id', userEncryptedId)
           .eq('engagement_type', 'downvote');
 
-        // Add upvote
+        
         const { error: insertError } = await supabase
           .from('post_engagement')
           .insert({
@@ -158,10 +158,10 @@ export function useEngagement() {
           return false;
         }
 
-        // Database triggers will automatically update post_stats
+        
 
         toast.success('Post upvoted!');
-        return true; // User upvoted
+        return true; 
       }
     } catch (error) {
       console.error('Error toggling upvote:', error);
@@ -171,20 +171,20 @@ export function useEngagement() {
     }
   }, []);
 
-  // Downvote a post
+  
   const downvotePost = useCallback(async (rawPostId: number, userEncryptedId: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Use rawPostId as the primary identifier
+      
       const rawPostIdValue = parseInt(rawPostId.toString());
       
-      // Validate values
+      
       if (!rawPostIdValue || isNaN(rawPostIdValue) || rawPostIdValue <= 0) {
         console.error('❌ Invalid rawPostId value for downvote:', { rawPostId, rawPostIdValue });
         return false;
       }
 
-      // Check if user already downvoted this post
+      
       const { data: existingDownvote, error: checkError } = await supabase
         .from('post_engagement')
         .select('id')
@@ -199,7 +199,7 @@ export function useEngagement() {
       }
 
       if (existingDownvote) {
-        // Remove downvote
+        
         const { error: deleteError } = await supabase
           .from('post_engagement')
           .delete()
@@ -212,12 +212,12 @@ export function useEngagement() {
           return false;
         }
 
-        // Database triggers will automatically update post_stats
+
 
         toast.success('Downvote removed');
-        return false; // User removed downvote
+          return false; 
       } else {
-        // Remove any existing upvote first (mutually exclusive voting)
+        
         await supabase
           .from('post_engagement')
           .delete()
@@ -225,7 +225,7 @@ export function useEngagement() {
           .eq('user_encrypted_id', userEncryptedId)
           .eq('engagement_type', 'upvote');
 
-        // Add downvote
+        
         const { error: insertError } = await supabase
           .from('post_engagement')
           .insert({
@@ -239,10 +239,10 @@ export function useEngagement() {
           return false;
         }
 
-        // Database triggers will automatically update post_stats
+        
 
         toast.success('Post downvoted');
-        return true; // User downvoted
+        return true; 
       }
     } catch (error) {
       console.error('Error toggling downvote:', error);
@@ -252,7 +252,7 @@ export function useEngagement() {
     }
   }, []);
 
-  // Check if user has upvoted a post
+  
   const hasUserUpvoted = useCallback(async (rawPostId: number, userEncryptedId: string): Promise<boolean> => {
     try {
       const rawPostIdValue = parseInt(rawPostId.toString());
@@ -277,7 +277,7 @@ export function useEngagement() {
     }
   }, []);
 
-  // Check if user has downvoted a post
+  
   const hasUserDownvoted = useCallback(async (rawPostId: number, userEncryptedId: string): Promise<boolean> => {
     try {
       const rawPostIdValue = parseInt(rawPostId.toString());
@@ -302,12 +302,12 @@ export function useEngagement() {
     }
   }, []);
 
-  // Update reply count (called when replies are added/removed from contract)
+  
   const updateReplyCount = useCallback(async (rawPostId: number, newCount: number) => {
     try {
       const rawPostIdValue = parseInt(rawPostId.toString());
       
-      // Validate values before upsert
+      
       if (!rawPostIdValue || isNaN(rawPostIdValue) || rawPostIdValue <= 0) {
         console.error('❌ Invalid rawPostId value for updateReplyCount:', { rawPostId, rawPostIdValue });
         return;
@@ -332,10 +332,10 @@ export function useEngagement() {
     }
   }, []);
 
-  // Helper function to update post_stats with actual vote counts
+  
   const updatePostStatsCounts = useCallback(async (rawPostId: number) => {
     try {
-      // Count actual upvotes and downvotes from post_engagement table
+      
       const [upvoteResult, downvoteResult] = await Promise.all([
         supabase
           .from('post_engagement')
@@ -352,7 +352,7 @@ export function useEngagement() {
       const upvoteCount = upvoteResult.count || 0;
       const downvoteCount = downvoteResult.count || 0;
 
-      // Get existing reply count to preserve it
+      
       const { data: existingStats } = await supabase
         .from('post_stats')
         .select('reply_count')
@@ -361,7 +361,7 @@ export function useEngagement() {
 
       const replyCount = existingStats?.reply_count || 0;
 
-      // Update post_stats with actual counts
+
       const { error } = await supabase
         .from('post_stats')
         .upsert({
@@ -385,12 +385,12 @@ export function useEngagement() {
     }
   }, []);
 
-  // Utility function to fix vote counts for all posts (useful for migration)
+  
   const fixAllPostStatsCounts = useCallback(async () => {
     try {
       console.log('Starting to fix all post stats counts...');
       
-      // Get all unique raw_post_ids from post_engagement
+      
       const { data: engagementData, error: engagementError } = await supabase
         .from('post_engagement')
         .select('raw_post_id')
@@ -401,15 +401,15 @@ export function useEngagement() {
         return;
       }
 
-      // Get unique post IDs
+      
       const uniquePostIds = [...new Set(engagementData?.map(item => item.raw_post_id) || [])];
       
       console.log(`Found ${uniquePostIds.length} posts with engagement data`);
 
-      // Update stats for each post
+      
       for (const postId of uniquePostIds) {
         await updatePostStatsCounts(postId);
-        // Small delay to avoid overwhelming the database
+        
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
@@ -433,14 +433,14 @@ export function useEngagement() {
   };
 }
 
-// Hook for real-time engagement updates
+
 export function useEngagementSubscription(rawPostIds: number[]) {
   const [stats, setStats] = useState<PostStats[]>([]);
 
   useEffect(() => {
     if (rawPostIds.length === 0) return;
 
-    // Subscribe to real-time updates
+    
     const subscription = supabase
       .channel('post-stats-updates')
       .on(

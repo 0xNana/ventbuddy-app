@@ -1,9 +1,9 @@
 import { useAccount } from 'wagmi';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { useLogger } from '../hooks/useLogger';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLogger } from '@/hooks/useLogger';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Wallet, 
   Copy, 
@@ -15,14 +15,14 @@ import {
   UserPlus,
   CheckCircle
 } from 'lucide-react';
-import { useRegistrationStatus } from '../hooks/useContract';
-import { CreatorEarnings } from './CreatorEarnings';
+import { useRegistrationStatus } from '@/hooks/useContract';
+import { CreatorEarnings } from '@/components/CreatorEarnings';
 import { UsernameSettings } from './UsernameSettings';
-import { EnhancedRegistrationModal } from './EnhancedRegistrationModal';
+import { EnhancedRegistrationModal } from '@/components/EnhancedRegistrationModal';
 import { ProfileCardSkeleton } from './ProfileCardSkeleton';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export function ProfileCard() {
   const log = useLogger('ProfileCard');
@@ -40,7 +40,6 @@ export function ProfileCard() {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
 
-  // Fetch account statistics
   useEffect(() => {
     const fetchAccountStats = async () => {
       if (!address) {
@@ -52,7 +51,6 @@ export function ProfileCard() {
       try {
         log.info('Fetching account stats', { address });
 
-        // Get encrypted address for this user
         const { data: userSession, error: sessionError } = await supabase
           .from('user_sessions')
           .select('encrypted_address')
@@ -68,7 +66,6 @@ export function ProfileCard() {
         const encryptedAddress = userSession?.encrypted_address;
         if (!encryptedAddress) {
           log.warn('No encrypted address found for user - user may not be registered yet', { address });
-          // Set default stats for unregistered users
           setAccountStats({
             postsCreated: 0,
             ethEarned: 0,
@@ -80,7 +77,6 @@ export function ProfileCard() {
           return;
         }
 
-        // Fetch posts created by this user
         const { data: postsData, error: postsError } = await supabase
           .from('encrypted_content')
           .select('id')
@@ -90,7 +86,6 @@ export function ProfileCard() {
           log.error('Error fetching posts', postsError);
         }
 
-        // Fetch tip earnings from access_logs table
         const { data: tipData, error: tipError } = await supabase
           .from('access_logs')
           .select('amount_wei')
@@ -102,7 +97,6 @@ export function ProfileCard() {
         }
 
 
-        // Fetch post engagement data (upvotes/downvotes received)
         const { data: postEngagementData, error: postEngagementError } = await supabase
           .from('post_engagement')
           .select('engagement_type')
@@ -112,18 +106,16 @@ export function ProfileCard() {
           log.error('Error fetching post engagement data', postEngagementError);
         }
 
-        // Calculate stats
         const postsCreated = postsData?.length || 0;
         const ethEarned = tipData?.reduce((sum, tip) => sum + (tip.amount_wei || 0), 0) || 0;
         const tipsReceived = tipData?.length || 0;
         
-        // Calculate upvotes and downvotes received
         const totalUpvotes = postEngagementData?.filter(engagement => engagement.engagement_type === 'upvote').length || 0;
         const totalDownvotes = postEngagementData?.filter(engagement => engagement.engagement_type === 'downvote').length || 0;
 
         setAccountStats({
           postsCreated,
-          ethEarned: ethEarned / 1e18, // Convert from wei to ETH
+          ethEarned: ethEarned / 1e18,
           tipsReceived,
           totalUpvotes,
           totalDownvotes
@@ -172,9 +164,9 @@ export function ProfileCard() {
 
   const getWalletIcon = () => {
     if (connector?.name.toLowerCase().includes('metamask')) {
-      return '🦊'; // MetaMask icon
+      return '🦊';
     }
-    return '🔗'; // Generic wallet icon
+    return '🔗';
   };
 
   if (!isConnected || !address) {
@@ -198,14 +190,12 @@ export function ProfileCard() {
     );
   }
 
-  // Show skeleton while loading stats
   if (isLoadingStats) {
     return <ProfileCardSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
       <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
         <Button
           variant={activeTab === 'profile' ? 'default' : 'ghost'}
@@ -238,7 +228,6 @@ export function ProfileCard() {
 
       {activeTab === 'profile' && (
         <>
-          {/* Wallet Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -304,7 +293,6 @@ export function ProfileCard() {
         </CardContent>
       </Card>
 
-      {/* Account Stats */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -345,7 +333,6 @@ export function ProfileCard() {
         </CardContent>
       </Card>
 
-      {/* Privacy & Security */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -395,7 +382,6 @@ export function ProfileCard() {
         </CardContent>
       </Card>
 
-      {/* Tip Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -433,7 +419,6 @@ export function ProfileCard() {
         />
       )}
 
-      {/* User Registration Modal */}
       {address && (
         <EnhancedRegistrationModal
           isOpen={showRegistrationModal}

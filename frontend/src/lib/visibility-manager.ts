@@ -1,9 +1,5 @@
 import { supabase } from './supabase';
 
-/**
- * Visibility Manager Service
- * Handles visibility caching, event logging, and real-time updates
- */
 export class VisibilityManager {
   private cache = new Map<string, {
     visibility: number;
@@ -13,10 +9,6 @@ export class VisibilityManager {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private eventListeners = new Map<string, Set<(data: any) => void>>();
 
-  /**
-   * Get visibility for a post/reply with caching
-   * Supports both legacy numeric IDs and encrypted string IDs
-   */
   async getVisibility(postId: number | string, replyId?: number | string): Promise<{
     visibility: number;
     eventType: string;
@@ -25,7 +17,6 @@ export class VisibilityManager {
     const cacheKey = replyId ? `${postId}_${replyId}` : postId.toString();
     const cached = this.cache.get(cacheKey);
     
-    // Return cached data if still valid
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return {
         visibility: cached.visibility,
@@ -34,16 +25,13 @@ export class VisibilityManager {
       };
     }
 
-    // Fetch from Supabase
     try {
       let result;
       
-      // Check if we're using encrypted IDs (string) or legacy IDs (number)
       const isEncryptedPostId = typeof postId === 'string';
       const isEncryptedReplyId = replyId && typeof replyId === 'string';
       
       if (isEncryptedPostId || isEncryptedReplyId) {
-        // Use encrypted ID columns
         if (replyId) {
           result = await supabase
             .from('visibility_events')
@@ -61,7 +49,6 @@ export class VisibilityManager {
             .limit(1);
         }
       } else {
-        // Use legacy numeric ID columns
         if (replyId) {
           result = await supabase.rpc('get_latest_reply_visibility', {
             post_id_param: postId as number,
@@ -79,7 +66,6 @@ export class VisibilityManager {
         const visibility = visibilityData.visibility_type;
         const eventType = visibilityData.event_type;
 
-        // Update cache
         this.cache.set(cacheKey, {
           visibility,
           timestamp: Date.now(),
@@ -93,21 +79,16 @@ export class VisibilityManager {
         };
       }
     } catch (error) {
-      console.error('Error fetching visibility:', error);
+      
     }
 
-    // Default to public if no data found
     return {
-      visibility: 1, // Public
+      visibility: 1,  
       eventType: 'created',
       isCached: false
     };
   }
 
-  /**
-   * Log a visibility event to Supabase
-   * Supports both legacy numeric IDs and encrypted string IDs
-   */
   async logVisibilityEvent(data: {
     postId: number | string;
     replyId?: number | string;
@@ -116,21 +97,13 @@ export class VisibilityManager {
     eventType: 'created' | 'updated' | 'unlocked' | 'revealed';
     userAddress?: string;
     encryptedVisibility?: string;
-    encryptedUnlockPrice?: string; // Optional - stored in encrypted_content table, not here
+    encryptedUnlockPrice?: string; 
     contentHash: string;
     previewHash: string;
     supabaseId: string;
   }): Promise<void> {
     try {
-      // DEBUG: Log the data being inserted
-      console.log('🔍 DEBUG - Logging visibility event:', {
-        postId: data.postId,
-        contentType: data.contentType,
-        visibilityType: data.visibilityType,
-        eventType: data.eventType
-      });
 
-      // Determine if we're using encrypted IDs or legacy numeric IDs
       const isEncryptedPostId = typeof data.postId === 'string';
       const isEncryptedReplyId = data.replyId && typeof data.replyId === 'string';
       
@@ -140,18 +113,14 @@ export class VisibilityManager {
         event_type: data.eventType,
         user_address: data.userAddress || null,
         encrypted_visibility: data.encryptedVisibility || null,
-        // Note: encrypted_unlock_price is stored in encrypted_content table, not here
         content_hash: data.contentHash,
         preview_hash: data.previewHash,
         supabase_id: data.supabaseId
       };
       
-      // Add ID fields based on type
       if (isEncryptedPostId) {
         insertData.encrypted_post_id = data.postId;
-        // Note: post_id column no longer exists in visibility_events table
       } else {
-        // Convert numeric postId to encrypted format for consistency
         insertData.encrypted_post_id = `0x${(data.postId as number).toString(16).padStart(64, '0')}`;
       }
       
@@ -159,26 +128,21 @@ export class VisibilityManager {
         if (isEncryptedReplyId) {
           insertData.encrypted_reply_id = data.replyId;
         } else {
-          // Convert numeric replyId to encrypted format for consistency
           insertData.encrypted_reply_id = `0x${(data.replyId as number).toString(16).padStart(64, '0')}`;
         }
-        // Note: reply_id column no longer exists in visibility_events table
       } else {
         insertData.encrypted_reply_id = null;
       }
 
-      console.log('🔍 DEBUG - Insert data:', insertData);
 
       const { error } = await supabase
         .from('visibility_events')
         .insert(insertData);
 
       if (error) {
-        console.error('Error logging visibility event:', error);
         return;
       }
 
-      // Update local cache
       const cacheKey = data.replyId ? `${data.postId}_${data.replyId}` : data.postId.toString();
       this.cache.set(cacheKey, {
         visibility: data.visibilityType,
@@ -186,7 +150,6 @@ export class VisibilityManager {
         eventType: data.eventType
       });
 
-      // Notify listeners
       this.notifyListeners('visibility_updated', {
         postId: data.postId,
         replyId: data.replyId,
@@ -195,13 +158,10 @@ export class VisibilityManager {
       });
 
     } catch (error) {
-      console.error('Error in logVisibilityEvent:', error);
+      // Silent error handling
     }
   }
 
-  /**
-   * Update visibility cache (called by real-time events)
-   */
   updateVisibilityCache(postId: number, replyId: number | undefined, visibility: number, eventType: string): void {
     const cacheKey = replyId ? `${postId}_${replyId}` : postId.toString();
     this.cache.set(cacheKey, {
@@ -210,7 +170,6 @@ export class VisibilityManager {
       eventType
     });
 
-    // Notify listeners
     this.notifyListeners('visibility_updated', {
       postId,
       replyId,
@@ -219,24 +178,15 @@ export class VisibilityManager {
     });
   }
 
-  /**
-   * Clear cache for a specific post/reply
-   */
   clearCache(postId: number, replyId?: number): void {
     const cacheKey = replyId ? `${postId}_${replyId}` : postId.toString();
     this.cache.delete(cacheKey);
   }
 
-  /**
-   * Clear all cache
-   */
   clearAllCache(): void {
     this.cache.clear();
   }
 
-  /**
-   * Add event listener
-   */
   addEventListener(event: string, callback: (data: any) => void): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
@@ -244,9 +194,6 @@ export class VisibilityManager {
     this.eventListeners.get(event)!.add(callback);
   }
 
-  /**
-   * Remove event listener
-   */
   removeEventListener(event: string, callback: (data: any) => void): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
@@ -254,9 +201,6 @@ export class VisibilityManager {
     }
   }
 
-  /**
-   * Notify all listeners of an event
-   */
   private notifyListeners(event: string, data: any): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
@@ -264,15 +208,12 @@ export class VisibilityManager {
         try {
           callback(data);
         } catch (error) {
-          console.error('Error in event listener:', error);
+          // Silent error handling
         }
       });
     }
   }
 
-  /**
-   * Check if user has access to content based on access_logs
-   */
   async checkUserAccess(contentId: string, contentType: 'post' | 'reply', userEncryptedId: string): Promise<{
     hasAccess: boolean;
     accessType: string | null;
@@ -290,7 +231,6 @@ export class VisibilityManager {
         .limit(1);
 
       if (error) {
-        console.error('Error checking user access:', error);
         return { hasAccess: false, accessType: null, lastAccess: null };
       }
 
@@ -304,29 +244,18 @@ export class VisibilityManager {
 
       return { hasAccess: false, accessType: null, lastAccess: null };
     } catch (error) {
-      console.error('Error in checkUserAccess:', error);
       return { hasAccess: false, accessType: null, lastAccess: null };
     }
   }
 
-  /**
-   * Check if user has access to content using plain address (no FHE encryption needed for reads)
-   * This is used for checking access without triggering FHE encryption
-   * 
-   * SIMPLIFIED APPROACH: Instead of querying access_logs, we'll use visibility_type from visibility_events
-   * - visibility_type = 0: Public content (everyone has access)
-   * - visibility_type = 1: Tippable content (requires payment, check if user is author)
-   */
   async checkUserAccessByAddress(contentId: number | string, contentType: 'post' | 'reply', userAddress: string): Promise<{
     hasAccess: boolean;
     accessType: string | null;
     lastAccess: string | null;
   }> {
     try {
-      // Determine if we're using encrypted content ID or legacy numeric ID
       const isEncryptedContentId = typeof contentId === 'string';
       
-      // Query visibility_events to get the visibility type
       let visibilityQuery = supabase
         .from('visibility_events')
         .select('visibility_type, event_type, created_at, user_address')
@@ -334,11 +263,9 @@ export class VisibilityManager {
         .order('created_at', { ascending: false })
         .limit(1);
       
-      // Add the appropriate content ID filter
       if (isEncryptedContentId) {
         visibilityQuery = visibilityQuery.eq('encrypted_post_id', contentId);
       } else {
-        // Convert numeric ID to encrypted format for consistency
         const encryptedContentId = `0x${(contentId as number).toString(16).padStart(64, '0')}`;
         visibilityQuery = visibilityQuery.eq('encrypted_post_id', encryptedContentId);
       }
@@ -346,7 +273,6 @@ export class VisibilityManager {
       const { data: visibilityData, error: visibilityError } = await visibilityQuery;
 
       if (visibilityError) {
-        console.error('Error querying visibility_events:', visibilityError);
         return { hasAccess: false, accessType: null, lastAccess: null };
       }
 
@@ -354,18 +280,13 @@ export class VisibilityManager {
         const visibilityEvent = visibilityData[0];
         const visibilityType = visibilityEvent.visibility_type;
         
-        // Check access based on visibility type
         if (visibilityType === 0) {
-          // Public content - everyone has access
           return {
             hasAccess: true,
             accessType: 'public',
             lastAccess: visibilityEvent.created_at
           };
         } else if (visibilityType === 1) {
-          // Tippable content - check if user is the author or has paid
-          // For now, we'll assume if user is the author, they have access
-          // TODO: Add payment verification logic here
           const isAuthor = visibilityEvent.user_address?.toLowerCase() === userAddress.toLowerCase();
           
           if (isAuthor) {
@@ -375,7 +296,6 @@ export class VisibilityManager {
               lastAccess: visibilityEvent.created_at
             };
           } else {
-            // User is not author - they need to pay to access
             return {
               hasAccess: false,
               accessType: 'requires_payment',
@@ -385,24 +305,15 @@ export class VisibilityManager {
         }
       }
 
-      // Default: no access if no visibility data found
       return { hasAccess: false, accessType: null, lastAccess: null };
     } catch (error) {
-      console.error('Error in checkUserAccessByAddress:', error);
       return { hasAccess: false, accessType: null, lastAccess: null };
     }
   }
 
-  /**
-   * Create a deterministic hash for user-content access checking
-   * This allows us to check access without FHE encryption
-   */
   private async createUserContentHash(userAddress: string, contentId: number | string): Promise<string> {
-    // Create a deterministic hash that can be used for access checking
-    // This is a simple approach - in production you might want something more sophisticated
     const input = `${userAddress.toLowerCase()}_${contentId}`;
     
-    // Use Web Crypto API for consistent hashing
     const encoder = new TextEncoder();
     const data = encoder.encode(input);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -412,45 +323,16 @@ export class VisibilityManager {
     return `0x${hashHex}`;
   }
 
-  /**
-   * Log access to content (for tracking who has accessed what)
-   * This is used for analytics and access control
-   * 
-   * SIMPLIFIED APPROACH: Instead of logging to access_logs table, we'll log visibility events
-   * when users unlock content, which provides the same tracking capability
-   */
   async logAccess(data: {
     contentId: number | string;
     contentType: 'post' | 'reply';
-    userAddress: string; // Changed from userEncryptedId to userAddress
+    userAddress: string;
     accessType: 'view' | 'tip' | 'unlock' | 'subscribe';
     amountWei?: number;
   }): Promise<void> {
-    try {
-      // For now, we'll just log this access event to the console
-      // In the future, we could log to a separate analytics table if needed
-      console.log('✅ Access logged:', {
-        contentId: data.contentId,
-        contentType: data.contentType,
-        accessType: data.accessType,
-        userAddress: data.userAddress,
-        amountWei: data.amountWei,
-        timestamp: new Date().toISOString()
-      });
-      
-      // TODO: If we need to track access for analytics, we could:
-      // 1. Create a separate analytics table
-      // 2. Log to visibility_events with event_type = 'accessed'
-      // 3. Use a different approach entirely
-      
-    } catch (error) {
-      console.error('Error in logAccess:', error);
-    }
+    // Access logging placeholder - can be implemented later if needed
   }
 
-  /**
-   * Debug function to check visibility for a specific content
-   */
   async debugVisibility(contentId: string, contentType: 'post' | 'reply' = 'post'): Promise<{
     contentId: string;
     contentType: string;
@@ -459,8 +341,7 @@ export class VisibilityManager {
     visibilityType: number | null;
     isLocked: boolean;
   }> {
-    try {
-      // Query visibility events for this content
+    try { 
       const { data: events, error } = await supabase
         .from('visibility_events')
         .select('*')
@@ -469,7 +350,6 @@ export class VisibilityManager {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching visibility events for debug:', error);
         return {
           contentId,
           contentType,
@@ -484,14 +364,6 @@ export class VisibilityManager {
       const visibilityType = latestEvent?.visibility_type ?? null;
       const isLocked = visibilityType === 1;
 
-      console.log('🔍 DEBUG - Visibility check:', {
-        contentId,
-        contentType,
-        totalEvents: events?.length || 0,
-        latestEvent,
-        visibilityType,
-        isLocked
-      });
 
       return {
         contentId,
@@ -502,7 +374,6 @@ export class VisibilityManager {
         isLocked
       };
     } catch (error) {
-      console.error('Error in debugVisibility:', error);
       return {
         contentId,
         contentType,
@@ -513,10 +384,7 @@ export class VisibilityManager {
       };
     }
   }
-
-  /**
-   * Get cache statistics
-   */
+  
   getCacheStats(): {
     size: number;
     entries: Array<{ key: string; visibility: number; age: number }>;
@@ -534,6 +402,4 @@ export class VisibilityManager {
     };
   }
 }
-
-// Export singleton instance
 export const visibilityManager = new VisibilityManager();

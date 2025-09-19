@@ -61,8 +61,12 @@ export const VentCard = ({
   supabaseId
 }: VentCardProps) => {
   const { address } = useAccount();
-  const [isUnlocked, setIsUnlocked] = useState(false); // Start locked, will be updated by access check
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    return visibility === 0;
+  });
   const [accessInfo, setAccessInfo] = useState<{ hasAccess: boolean; reason: string } | null>(null);
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [userEncryptedAddress, setUserEncryptedAddress] = useState<string | null>(null);
   const [currentLikes, setCurrentLikes] = useState(likes);
   const [currentComments, setCurrentComments] = useState(comments);
   const [currentUpvotes, setCurrentUpvotes] = useState(0);
@@ -79,76 +83,117 @@ export const VentCard = ({
   const { getReplies, getReplyCounts, getEncryptedAddress } = useSimpleReplies();
   const log = useLogger('VentCard');
   
-  const checkAccessLog = useCallback(async (contentId: string) => {
-    log.trace('checkAccessLog');
-    try {
-      const encryptedAddress = await getEncryptedAddress();
-      if (!encryptedAddress) {
-        log.warn('No encrypted address available for access check');
-        return false;
-      }
-
-      log.db('SELECT', 'access_logs', { contentId, encryptedAddress: encryptedAddress.substring(0, 10) + '...' });
-
-      const { data, error } = await supabase
-        .from('access_logs')
-        .select('*')
-        .eq('content_id', contentId)
-        .eq('user_encrypted_id', encryptedAddress)
-        .eq('content_type', 'post')
-        .eq('access_type', 'tip')
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        log.error('Failed to check access log', error);
-        return false;
-      }
-
-      const hasAccess = !!data;
-      log.debug('Access check result', { contentId, hasAccess });
-      return hasAccess;
-    } catch (err) {
-      log.error('Failed to check access log', err);
-      return false;
-    } finally {
-      log.traceExit('checkAccessLog');
-    }
-  }, [getEncryptedAddress, log]);
-  
-  // Visibility data is now passed as props from usePosts hook
-  
-  // Check visibility permissions using access_log table for private content
+  // Get encrypted address once and cache it
   useEffect(() => {
-    const checkVisibilityAccess = async () => {
+    const fetchEncryptedAddress = async () => {
+      if (!address) {
+        setUserEncryptedAddress(null);
+        return;
+      }
+      
+      try {
+        const encryptedAddress = await getEncryptedAddress();
+        setUserEncryptedAddress(encryptedAddress);
+      } catch (err) {
+        log.error('Error getting encrypted address', err);
+        setUserEncryptedAddress(null);
+      }
+    };
+
+    fetchEncryptedAddress();
+  }, [address]);
+  
+  useEffect(() => {
+    const checkAuthorAndVisibility = async () => {
       if (!rawPostId) return;
       
+      let isContentAuthor = false;
+      
+
+      if (address && userEncryptedAddress) {
+        try {
+            const { data: contentData, error } = await supabase
+              .from('encrypted_content')
+              .select('author_id')
+              .eq('raw_post_id', rawPostId)
+              .single();
+
+            if (!error && contentData) {
+              isContentAuthor = userEncryptedAddress === contentData.author_id;
+              
+              log.debug('Author check result', { 
+                rawPostId, 
+                userEncryptedAddress: userEncryptedAddress.substring(0, 10) + '...',
+                contentAuthorId: contentData.author_id.substring(0, 10) + '...',
+                isAuthor: isContentAuthor 
+              });
+            } else {
+              log.warn('Failed to get content author', { error: error?.message });
+            }
+        } catch (err) {
+          log.error('Error checking content author', err);
+        }
+      }
+      
+      setIsAuthor(isContentAuthor);
+      
       if (address) {
-        // For public content (visibility === 0), always show it immediately
         if (visibility === 0) {
           setIsUnlocked(true);
           setAccessInfo({ hasAccess: true, reason: 'public' });
           return;
         }
 
-        // For private content (visibility === 1), check access_log table
         if (visibility === 1) {
-          const hasAccess = await checkAccessLog(rawPostId.toString());
-          if (hasAccess) {
+          if (isContentAuthor) {
             setIsUnlocked(true);
-            setAccessInfo({ hasAccess: true, reason: 'unlock' });
-          } else {
+            setAccessInfo({ hasAccess: true, reason: 'author' });
+            return;
+          }
+          
+          try {
+            if (!userEncryptedAddress) {
+              setIsUnlocked(false);
+              setAccessInfo({ hasAccess: false, reason: 'requires_payment' });
+              return;
+            }
+
+            const { data, error } = await supabase
+              .from('access_logs')
+              .select('*')
+              .eq('content_id', rawPostId.toString())
+              .eq('user_encrypted_id', userEncryptedAddress)
+              .eq('content_type', 'post')
+              .in('access_type', ['tip', 'unlock'])
+              .order('created_at', { ascending: false })
+              .limit(1);
+
+            if (error && error.code !== 'PGRST116') {
+              log.error('Failed to check access log', error);
+              setIsUnlocked(false);
+              setAccessInfo({ hasAccess: false, reason: 'requires_payment' });
+              return;
+            }
+
+            const hasAccess = data && data.length > 0;
+            if (hasAccess) {
+              setIsUnlocked(true);
+              setAccessInfo({ hasAccess: true, reason: 'unlock' });
+            } else {
+              setIsUnlocked(false);
+              setAccessInfo({ hasAccess: false, reason: 'requires_payment' });
+            }
+          } catch (err) {
+            log.error('Failed to check access log', err);
             setIsUnlocked(false);
-            setAccessInfo({ hasAccess: false, reason: 'not_connected' });
+            setAccessInfo({ hasAccess: false, reason: 'requires_payment' });
           }
           return;
         }
 
-        // Fallback to original logic for other visibility levels
-        // For now, assume no access for other visibility levels
         setAccessInfo({ hasAccess: false, reason: 'not_connected' });
         setIsUnlocked(false);
       } else {
-        // User not connected - only show public content immediately
         if (visibility === 0) {
           setIsUnlocked(true);
           setAccessInfo({ hasAccess: true, reason: 'public' });
@@ -159,8 +204,8 @@ export const VentCard = ({
       }
     };
 
-    checkVisibilityAccess();
-  }, [address, rawPostId, visibility]); // Remove checkAccessLog and authorId dependencies
+    checkAuthorAndVisibility();
+  }, [address, rawPostId, visibility, userEncryptedAddress]);
 
   // Check if user has upvoted or downvoted this post
   useEffect(() => {
@@ -194,15 +239,13 @@ export const VentCard = ({
     };
 
     checkUserVotes();
-  }, [address, rawPostId]); // Remove authorId dependency since we get user's own encrypted address
+  }, [address, rawPostId]);
 
-  // Update local state when props change
   useEffect(() => {
     setCurrentLikes(likes);
     setCurrentComments(comments);
   }, [likes, comments]);
 
-  // Load actual vote counts from database
   useEffect(() => {
     const loadVoteCounts = async () => {
       if (!rawPostId) return;
@@ -221,7 +264,6 @@ export const VentCard = ({
     loadVoteCounts();
   }, [rawPostId, getPostStats]);
 
-  // Load reply counts from reply_stats table
   useEffect(() => {
     const loadReplyCounts = async () => {
       if (!rawPostId) return;
@@ -249,25 +291,20 @@ export const VentCard = ({
       return;
     }
 
-    // Convert from wei to ETH amount
-    // Database stores amounts in wei (e.g., 1000000000000000000 for 1 ETH)
-    // We need to convert to actual ETH amount for the payment hook
     const actualTipAmount = rawTipAmount / 1e18;
 
     try {
       log.info('Unlocking post', { rawPostId, amount: actualTipAmount, currency: 'ETH' });
       
-      // Use unlockContent for proper unlock flow
-      // Use rawPostId as primary identifier
       const txHash = await unlockContent(rawPostId.toString(), actualTipAmount);
       log.info('Unlock successful', { txHash });
       
-      // Update local state
+      await createAccessLog(rawPostId.toString(), 'unlock', actualTipAmount);
+      
       setIsUnlocked(true);
       setAccessInfo({ hasAccess: true, reason: 'unlocked' });
     } catch (error) {
       log.error('Unlock failed', error);
-      // Error is already handled by the hook and shown via toast
     }
   };
 
@@ -283,9 +320,6 @@ export const VentCard = ({
       return;
     }
 
-    // Convert from wei to ETH amount
-    // Database stores amounts in wei (e.g., 1000000000000000000 for 1 ETH)
-    // We need to convert to actual ETH amount for the payment hook
     const actualTipAmount = rawTipAmount / 1e18;
 
     try {
@@ -301,26 +335,20 @@ export const VentCard = ({
       const txHash = await tipPost(rawPostId.toString(), actualTipAmount);
       log.info('Tip successful', { txHash });
       
-      // CRITICAL: Only show content AFTER successful payment
-      // Wait for transaction confirmation before updating visibility
       log.info('Waiting for transaction confirmation');
       await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds for confirmation
       
-      // Create access_log entry in Supabase
-      await createAccessLog(rawPostId.toString(), 'tip', actualTipAmount);
+      await createAccessLog(rawPostId.toString(), 'unlock', actualTipAmount);
       
-      // Update visibility state ONLY after payment is confirmed
       setIsUnlocked(true);
       setAccessInfo({ hasAccess: true, reason: 'unlock' });
       log.info('Content visibility updated after successful payment');
     } catch (error) {
       log.error('Tip failed', error);
-      // Error is already handled by the hook and shown via toast
     }
   };
 
   const handleTipUnlocked = () => {
-    // Open tip modal for unlocked content
     setTipModalOpen(true);
   };
 
@@ -328,16 +356,15 @@ export const VentCard = ({
     try {
       log.info('Tipping unlocked content', { rawPostId, amount, currency: 'ETH' });
       
-      // Use the tipPost function for general tipping (not unlocking)
-      // Use rawPostId as primary identifier
       const txHash = await tipPost(rawPostId.toString(), amount);
       log.info('Tip successful', { txHash });
+      
+      await createAccessLog(rawPostId.toString(), 'tip', amount);
       
       toast.success(`Successfully tipped ${amount} ETH to the creator!`);
       setTipModalOpen(false);
     } catch (error) {
       log.error('Tip failed', error);
-      // Error is already handled by the hook and shown via toast
     }
   };
 
@@ -363,17 +390,13 @@ export const VentCard = ({
       const newUpvotedState = await upvotePost(rawPostId, userSession.encrypted_address);
       setHasUpvoted(newUpvotedState);
       
-      // Update counters based on mutually exclusive voting
       if (newUpvotedState) {
-        // User upvoted - remove any downvote state and update counters
         setHasDownvoted(false);
         setCurrentUpvotes(prev => prev + 1);
-        // If user had a downvote before, decrease downvote count
         if (hasDownvoted) {
           setCurrentDownvotes(prev => Math.max(prev - 1, 0));
         }
       } else {
-        // User removed upvote
         setCurrentUpvotes(prev => Math.max(prev - 1, 0));
       }
     } catch (error) {
@@ -388,7 +411,6 @@ export const VentCard = ({
     }
 
     try {
-      // Get current user's encrypted address
       const { data: userSession, error: sessionError } = await supabase
         .from('user_sessions')
         .select('encrypted_address')
@@ -403,17 +425,13 @@ export const VentCard = ({
       const newDownvotedState = await downvotePost(rawPostId, userSession.encrypted_address);
       setHasDownvoted(newDownvotedState);
       
-      // Update counters based on mutually exclusive voting
       if (newDownvotedState) {
-        // User downvoted - remove any upvote state and update counters
         setHasUpvoted(false);
         setCurrentDownvotes(prev => prev + 1);
-        // If user had an upvote before, decrease upvote count
         if (hasUpvoted) {
           setCurrentUpvotes(prev => Math.max(prev - 1, 0));
         }
       } else {
-        // User removed downvote
         setCurrentDownvotes(prev => Math.max(prev - 1, 0));
       }
     } catch (error) {
@@ -422,19 +440,16 @@ export const VentCard = ({
   };
 
   const handleReplyCreated = async (replyData: any) => {
-    // Update comment count from reply stats
     try {
       const replyCounts = await getReplyCounts(rawPostId.toString());
       setCurrentComments(replyCounts.totalReplies);
     } catch (error) {
       log.error('Failed to update reply count', error);
-      // Fallback to incrementing
       setCurrentComments(prev => prev + 1);
     }
     
     setShowReplyForm(false);
     
-    // Refresh replies list
     await loadReplies();
   };
 
@@ -444,10 +459,8 @@ export const VentCard = ({
 
   const handleShare = async () => {
     try {
-      // Create a shareable URL for this post
       const postUrl = `${window.location.origin}/post/${rawPostId}`;
       
-      // Try to use the Web Share API if available (mobile devices)
       if (navigator.share) {
         await navigator.share({
           title: 'Check out this post on Ventbuddy',
@@ -456,7 +469,6 @@ export const VentCard = ({
         });
         toast.success('Post shared successfully!');
       } else {
-        // Fallback: Copy to clipboard
         await navigator.clipboard.writeText(postUrl);
         toast.success('Post link copied to clipboard!');
       }
@@ -465,7 +477,6 @@ export const VentCard = ({
     } catch (error) {
       log.error('Failed to share post', error);
       
-      // Final fallback: Show URL in a prompt
       const postUrl = `${window.location.origin}/post/${rawPostId}`;
       toast.error('Share failed. Here\'s the link:', {
         description: postUrl,
@@ -485,8 +496,7 @@ export const VentCard = ({
 
   const createAccessLog = useCallback(async (contentId: string, accessType: string, amount?: number) => {
     try {
-      const encryptedAddress = await getEncryptedAddress();
-      if (!encryptedAddress) {
+      if (!userEncryptedAddress) {
         log.warn('No encrypted address available for access log');
         return;
       }
@@ -496,10 +506,10 @@ export const VentCard = ({
         .insert({
           content_id: contentId,
           content_type: 'post',
-          user_encrypted_id: encryptedAddress,
+          user_encrypted_id: userEncryptedAddress,
           access_type: accessType,
-          amount_wei: amount ? amount * Math.pow(10, 18) : 0, // Convert ETH to wei
-          raw_post_id: parseInt(rawPostId.toString()), // Convert to bigint (int8)
+          amount_wei: amount ? amount * Math.pow(10, 18) : 0,
+          raw_post_id: parseInt(rawPostId.toString()),
           created_at: new Date().toISOString()
         });
 
@@ -511,7 +521,7 @@ export const VentCard = ({
     } catch (err) {
       log.error('Failed to create access log', err);
     }
-  }, [getEncryptedAddress]);
+  }, [userEncryptedAddress]);
 
   const handleShowReplies = async () => {
     if (!showReplies) {
@@ -536,7 +546,6 @@ export const VentCard = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Visibility Badge */}
             {visibility !== undefined && (
               <>
                 {visibility === 0 && (
@@ -557,7 +566,6 @@ export const VentCard = ({
               </>
             )}
             
-            {/* Legacy badges */}
             {isPremium && (
               <Badge variant="secondary" className="bg-gradient-premium text-premium-foreground">
                 Premium
@@ -584,12 +592,16 @@ export const VentCard = ({
               <span className="text-red-400 italic">
                 This content could not be decrypted. It may be corrupted or encrypted with a different key.
               </span>
-            ) : (
+            ) : isUnlocked || !isLocked ? (
               content
+            ) : (
+              <span className="text-muted-foreground italic">
+                [Private content - unlock to view]
+              </span>
             )}
           </p>
           
-          {!isUnlocked && !decryptError && (
+          {!isUnlocked && isLocked && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm rounded-lg">
               <div className="text-center">
                 {visibility === 1 && (
@@ -597,7 +609,7 @@ export const VentCard = ({
                     <Coins className="h-8 w-8 mx-auto mb-2 text-purple-500" />
                     <p className="text-sm font-medium mb-2">Private content</p>
                     <p className="text-xs text-muted-foreground mb-3">
-                      Use the Tip Creator button below to unlock
+                      {isAuthor ? 'This is your content' : 'Use the Tip Creator button below to unlock'}
                     </p>
                   </>
                 )}
@@ -620,14 +632,6 @@ export const VentCard = ({
           )}
         </div>
         
-        {/* Show preview for locked content */}
-        {!isUnlocked && isLocked && preview && !decryptError && (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-dashed">
-            <p className="text-sm text-muted-foreground">
-              <strong>Preview:</strong> {preview}
-            </p>
-          </div>
-        )}
       </CardContent>
 
       <CardFooter className="flex items-center justify-between pt-2">
@@ -678,7 +682,6 @@ export const VentCard = ({
           </Button>
         </div>
         
-        {/* Show status and Tip Creator button for unlocked content OR locked private content */}
         {(isUnlocked || (!isUnlocked && visibility === 1)) && (
           <div className="flex items-center gap-2">
             {isUnlocked && (
@@ -689,7 +692,6 @@ export const VentCard = ({
                  accessInfo?.reason === 'unlock' ? 'Unlocked' : ''}
               </span>
             )}
-            {/* Tip Creator button - show for unlocked content or locked private content */}
             {accessInfo?.reason !== 'author' && (
               <Button 
                 variant="tip" 
@@ -706,18 +708,14 @@ export const VentCard = ({
         )}
       </CardFooter>
 
-      {/* Replies Section */}
       {showReplies && (
         <div className="border-t border-border/50 p-4 space-y-4">
-          {/* Reply Form */}
           <SimpleReplyForm
             rawPostId={rawPostId.toString()}
             onReplyCreated={handleReplyCreated}
             onCancel={handleReplyCancel}
           />
-          
-          {/* Replies List */}
-          {replies.length > 0 && (
+            {replies.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-muted-foreground">
                 Replies ({replies.length})
@@ -730,7 +728,6 @@ export const VentCard = ({
                   onReplyCreated={handleReplyCreated}
                   onReplyTipped={(replyId, amount) => {
                     log.info('Reply tipped', { replyId, amount });
-                    // You can add additional logic here if needed
                   }}
                 />
               ))}
@@ -739,13 +736,12 @@ export const VentCard = ({
         </div>
       )}
 
-      {/* Tip Modal for unlocked content */}
       <TipModal
         isOpen={tipModalOpen}
         onClose={() => setTipModalOpen(false)}
         onTip={handleTipFromModal}
         author={authorDisplayName || author}
-        preview={preview || content.substring(0, 100) + '...'}
+        isUnlock={false}
       />
 
     </Card>

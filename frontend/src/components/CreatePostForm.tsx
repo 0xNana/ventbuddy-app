@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Alert, AlertDescription } from './ui/alert';
-import { useCreatePost } from '../hooks/useContract';
-import { useWallet } from '../hooks/useContract';
-import { useRegistrationStatus } from '../hooks/useContract';
-import { useFHEEncryption } from '../lib/fhe-encryption';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCreatePost } from '@/hooks/useContract';
+import { useWallet } from '@/hooks/useContract';
+import { useRegistrationStatus } from '@/hooks/useContract';
+import { useFHEEncryption } from '@/lib/fhe-encryption';
 import { ContentCreationProgress, defaultContentCreationSteps, type ProgressStep } from './ContentCreationProgress';
 import { toast } from 'sonner';
 
 interface CreatePostFormProps {
   onPostCreated?: (postId: string) => void;
-  onPostCreatedCallback?: () => void; // Callback to refresh feed
+  onPostCreatedCallback?: () => void;
 }
 
 export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreatePostFormProps) {
@@ -26,8 +26,8 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
   
   const [formData, setFormData] = useState({
     content: '',
-    visibility: '0', // 0 = Public, 1 = Tippable
-    minTipAmount: '0', // Minimum tip amount for tippable posts (in ETH)
+    visibility: '0',
+    minTipAmount: '0',
   });
 
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>(defaultContentCreationSteps);
@@ -53,30 +53,23 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
     visibility: number,
     minTipAmount: number
   ) => {
-    // This function will call the original createPost but with progress tracking
-    // For now, we'll simulate the progress steps and call the original function
     
-    // Step 2: Content Encryption (simulated)
     updateProgressStep('encryption', 'in_progress', 50);
     await new Promise(resolve => setTimeout(resolve, 1000));
     updateProgressStep('encryption', 'completed', 100);
 
-    // Step 3: FHE Encryption
     updateProgressStep('fhe_encryption', 'in_progress', 50);
     setCurrentStep(3);
     await new Promise(resolve => setTimeout(resolve, 1000));
     updateProgressStep('fhe_encryption', 'completed', 100);
 
-    // Step 4: Contract Interaction
     updateProgressStep('contract', 'in_progress', 50);
     setCurrentStep(4);
     
-    // Call the actual createPost function
     const result = await createPost(content, visibility, minTipAmount);
     
     updateProgressStep('contract', 'completed', 100);
 
-    // Step 5: Event Logging
     updateProgressStep('logging', 'in_progress', 50);
     setCurrentStep(5);
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -108,14 +101,12 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
       return;
     }
 
-    // Validate pricing based on visibility
     if (formData.visibility === '1' && parseFloat(formData.minTipAmount) === 0) {
       toast.error('Please set a minimum tip amount for tippable posts');
       return;
     }
 
     try {
-      // Show progress bar
       setShowProgress(true);
       setCurrentStep(0);
       
@@ -125,21 +116,18 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
         minTipAmount: formData.minTipAmount
       });
 
-      // Step 1: Content Preparation
       updateProgressStep('writing', 'in_progress', 100);
       setCurrentStep(1);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UX
+      await new Promise(resolve => setTimeout(resolve, 500));
       updateProgressStep('writing', 'completed', 100);
 
-      // Step 2: Content Encryption
       updateProgressStep('encryption', 'in_progress', 0);
       setCurrentStep(2);
       
-      // Create a custom createPost function that reports progress
       const result = await createPostWithProgress(
         formData.content,
         parseInt(formData.visibility),
-        parseFloat(formData.minTipAmount) * 1e18 // Convert to wei (18 decimals for ETH)
+        parseFloat(formData.minTipAmount) * 1e18
       );
 
       if (result && result.txHash && result.rawPostId) {
@@ -151,18 +139,15 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
           minTipAmount: '0',
         });
         onPostCreated?.(result.contentData.id.toString());
-        onPostCreatedCallback?.(); // Refresh the feed
+        onPostCreatedCallback?.();
         
-        // Hide progress after success
         setTimeout(() => {
           resetProgress();
         }, 2000);
       } else {
-        // Post creation failed - blockchain transaction didn't complete
         console.error('❌ Post creation failed - missing blockchain data:', result);
         toast.error('Post creation failed. The content was saved locally but the blockchain transaction failed. Please try again.');
         
-        // Mark current step as error
         if (currentStep > 0) {
           const currentStepId = progressSteps[currentStep - 1]?.id;
           if (currentStepId) {
@@ -173,7 +158,6 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
     } catch (err) {
       console.error('❌ Create post error:', err);
       
-      // Mark current step as error
       if (currentStep > 0) {
         const currentStepId = progressSteps[currentStep - 1]?.id;
         if (currentStepId) {
@@ -181,7 +165,6 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
         }
       }
       
-      // Error message is already set by the hook
       if (error) {
         toast.error(error);
       } else {
@@ -194,7 +177,6 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
-      // No complex pricing logic needed with simplified contract
       
       return newData;
     });
@@ -287,7 +269,6 @@ export function CreatePostForm({ onPostCreated, onPostCreatedCallback }: CreateP
     );
   }
 
-  // Show progress bar if posting is in progress
   if (showProgress) {
     return (
       <ContentCreationProgress

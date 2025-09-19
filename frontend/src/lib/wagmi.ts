@@ -2,12 +2,11 @@ import { createConfig, http } from 'wagmi';
 import { sepolia } from 'wagmi/chains';
 import { injected, metaMask, walletConnect, coinbaseWallet } from 'wagmi/connectors';
 
-// Standard wagmi configuration without Porto
 export const config = createConfig({
   chains: [sepolia],
   connectors: [
-    injected(), // Browser wallet injection
-    metaMask(), // MetaMask support
+    injected(),
+    metaMask(),
     coinbaseWallet({
       appName: 'VentBuddy',
     }),
@@ -18,8 +17,7 @@ export const config = createConfig({
   transports: {
     [sepolia.id]: http(import.meta.env.VITE_RPC_URL),
   },
-  ssr: false, // Disable SSR for better performance
+  ssr: false,
 });
 
-// Export types for TypeScript
 export type Config = typeof config;

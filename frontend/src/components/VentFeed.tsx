@@ -1,30 +1,19 @@
 import { VentCard } from "./VentCard";
 import { VentFeedSkeleton } from "./VentFeedSkeleton";
-import { TipModal } from "./TipModal";
-import { useState, useEffect } from "react";
 import { usePosts } from "@/hooks/useContract";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Database } from "lucide-react";
-import { toast } from "sonner";
 
 export const VentFeed = () => {
-  const [selectedVent, setSelectedVent] = useState<string | null>(null);
-  const [tipModalOpen, setTipModalOpen] = useState(false);
   const { posts, isLoading, error } = usePosts();
 
-  const handleTip = (amount: number) => {
-    console.log(`Tipped $${amount} for vent ${selectedVent}`);
-    toast.success(`Successfully tipped ${amount} ETH!`);
-    setTipModalOpen(false);
-  };
 
-
-  // Show loading state with skeleton
+  
   if (isLoading && posts.length === 0) {
     return <VentFeedSkeleton count={3} />;
   }
 
-  // Show error state
+  
   if (error && posts.length === 0) {
     return (
       <div className="space-y-6">
@@ -38,7 +27,7 @@ export const VentFeed = () => {
     );
   }
 
-  // Show empty state
+  
   if (!isLoading && posts.length === 0) {
     return (
       <div className="space-y-6">
@@ -55,23 +44,13 @@ export const VentFeed = () => {
 
   return (
     <div className="space-y-6">
-      {/* Posts */}
+      
       {posts.map((post, index) => (
         <VentCard
           key={post.rawPostId || `post-${index}`}
           {...post}
         />
       ))}
-
-
-      {/* Tip Modal */}
-      <TipModal
-        isOpen={tipModalOpen}
-        onClose={() => setTipModalOpen(false)}
-        onTip={handleTip}
-        author="Anon"
-        preview="Encrypted content preview"
-      />
     </div>
   );
 };

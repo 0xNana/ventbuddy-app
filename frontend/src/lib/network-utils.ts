@@ -1,7 +1,3 @@
-/**
- * Network utilities for handling wallet network switching
- */
-
 export const SEPOLIA_CHAIN_ID = 11155111;
 export const SEPOLIA_CHAIN_ID_HEX = '0xaa36a7';
 
@@ -21,9 +17,7 @@ export const SEPOLIA_NETWORK_CONFIG = {
   blockExplorerUrls: ['https://sepolia.etherscan.io'],
 };
 
-/**
- * Check if the current network is Sepolia
- */
+
 export async function isSepoliaNetwork(): Promise<boolean> {
   if (!window.ethereum) return false;
   
@@ -36,16 +30,14 @@ export async function isSepoliaNetwork(): Promise<boolean> {
   }
 }
 
-/**
- * Switch to Sepolia network
- */
+
 export async function switchToSepolia(): Promise<boolean> {
   if (!window.ethereum) {
     throw new Error('No wallet detected');
   }
 
   try {
-    // Try to switch to Sepolia
+    
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
@@ -54,7 +46,7 @@ export async function switchToSepolia(): Promise<boolean> {
     console.log('✅ Successfully switched to Sepolia network');
     return true;
   } catch (switchError: any) {
-    // If the network doesn't exist, add it
+    
     if (switchError.code === 4902) {
       try {
         await window.ethereum.request({
@@ -75,9 +67,7 @@ export async function switchToSepolia(): Promise<boolean> {
   }
 }
 
-/**
- * Get current network information
- */
+
 export async function getCurrentNetwork(): Promise<{
   chainId: string;
   chainName: string;
@@ -113,9 +103,7 @@ export async function getCurrentNetwork(): Promise<{
   }
 }
 
-/**
- * Listen for network changes
- */
+
 export function onNetworkChange(callback: (chainId: string) => void): () => void {
   if (!window.ethereum) {
     return () => {};
@@ -128,7 +116,7 @@ export function onNetworkChange(callback: (chainId: string) => void): () => void
 
   window.ethereum.on('chainChanged', handleChainChanged);
 
-  // Return cleanup function
+  
   return () => {
     if (window.ethereum?.removeListener) {
       window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -136,9 +124,7 @@ export function onNetworkChange(callback: (chainId: string) => void): () => void
   };
 }
 
-/**
- * Ensure wallet is connected to Sepolia network
- */
+
 export async function ensureSepoliaNetwork(): Promise<boolean> {
   try {
     const isSepolia = await isSepoliaNetwork();
@@ -147,7 +133,7 @@ export async function ensureSepoliaNetwork(): Promise<boolean> {
       console.log('🔄 Switching to Sepolia network...');
       await switchToSepolia();
       
-      // Verify the switch was successful
+      
       const newIsSepolia = await isSepoliaNetwork();
       if (!newIsSepolia) {
         throw new Error('Failed to verify network switch to Sepolia');

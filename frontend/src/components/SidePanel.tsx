@@ -1,10 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   TrendingUp, 
   Shield, 
-  Coins, 
   Users, 
   Star,
   Lock,
@@ -13,22 +11,14 @@ import {
 } from "lucide-react";
 import { PremiumModal } from "./PremiumModal";
 import { useState } from "react";
-import { useAccount } from "wagmi";
 
 export const SidePanel = () => {
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-  const [selectedCreator, setSelectedCreator] = useState<{id: string, name: string} | null>(null);
-  const { address } = useAccount();
-
-  const handleCreatorSubscription = (creatorId: string, creatorName: string) => {
-    setSelectedCreator({ id: creatorId, name: creatorName });
-    setIsSubscriptionModalOpen(true);
-  };
+  const [selectedCreator, setSelectedCreator] = useState<{id: string, name: string} | null>(null);  
 
   return (
     <div className="space-y-6">
-      {/* Trending Topics */}
-      <Card className="bg-background border-border/50 relative">
+      <Card className="bg-background border-border/50  relative">
         <div className="absolute top-2 right-2 z-10">
           <Badge variant="outline" className="text-xs px-2 py-1 bg-background/90">
             Coming Soon
@@ -60,7 +50,6 @@ export const SidePanel = () => {
         </CardContent>
       </Card>
 
-      {/* Privacy Stats */}
       <Card className="bg-background border-border/50 relative">
         <div className="absolute top-2 right-2 z-10">
           <Badge variant="outline" className="text-xs px-2 py-1 bg-background/90">
@@ -98,7 +87,6 @@ export const SidePanel = () => {
         </CardContent>
       </Card>
 
-      {/* Top Creators */}
       <Card className="bg-background border-border/50 relative">
         <div className="absolute top-2 right-2 z-10">
           <Badge variant="outline" className="text-xs px-2 py-1 bg-background/90">
@@ -142,7 +130,6 @@ export const SidePanel = () => {
         </CardContent>
       </Card>
 
-      {/* Creator Subscriptions */}
       <Card className="bg-background border-border/50 relative">
         <div className="absolute top-2 right-2 z-10">
           <Badge variant="outline" className="text-xs px-2 py-1 bg-background/90">
@@ -186,7 +173,6 @@ export const SidePanel = () => {
         </CardContent>
       </Card>
 
-      {/* Creator Subscription Modal */}
       {selectedCreator && (
         <PremiumModal
           isOpen={isSubscriptionModalOpen}

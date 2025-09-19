@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -15,7 +14,7 @@ export function WalletConnect() {
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
   const { isRegistered } = useRegistrationStatus();
-  // Removed Porto-specific functionality
+  
 
   const handleCopyAddress = async () => {
     if (address) {
@@ -47,7 +46,6 @@ export function WalletConnect() {
     }
   };
 
-  // Removed Porto permissions functionality
 
   if (!isConnected) {
     return (
@@ -103,7 +101,6 @@ export function WalletConnect() {
                   </>
                 ) : null}
               </div>
-              {/* Removed Porto account indicator */}
             </div>
             <Badge variant="default" className="bg-green-500">
               Connected
@@ -111,7 +108,6 @@ export function WalletConnect() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Network Status */}
           {networkInfo && (
             <div className={`p-3 rounded-lg border ${
               networkInfo.isSepolia 
@@ -191,7 +187,6 @@ export function WalletConnect() {
             </Button>
           )}
 
-          {/* Removed Porto permissions button */}
 
           <div className="flex space-x-2">
             <Button
@@ -222,7 +217,6 @@ export function WalletConnect() {
         </CardContent>
       </Card>
       
-      {/* Registration Modal */}
       {address && (
         <EnhancedRegistrationModal
           isOpen={showRegistrationModal}

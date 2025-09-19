@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,9 +8,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Badge } from './ui/badge';
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { 
   User, 
   Wallet, 
@@ -22,8 +22,8 @@ import {
   UserPlus,
   CheckCircle
 } from 'lucide-react';
-import { useWallet, useRegistrationStatus } from '../hooks/useContract';
-import { EnhancedRegistrationModal } from './EnhancedRegistrationModal';
+import { useWallet, useRegistrationStatus } from '@/hooks/useContract';
+import { EnhancedRegistrationModal } from '@/components/EnhancedRegistrationModal';
 import { toast } from 'sonner';
 
 export function ProfileDropdown() {
@@ -47,15 +47,14 @@ export function ProfileDropdown() {
   };
 
   const navigateToProfile = () => {
-    // Dispatch event to navigate to profile tab
     const event = new CustomEvent('navigateToTab', { detail: { tab: 'profile' } });
     window.dispatchEvent(event);
-    setIsOpen(false); // Close the dropdown
+    setIsOpen(false);
   };
 
   const handleRegistration = () => {
     setShowRegistrationModal(true);
-    setIsOpen(false); // Close the dropdown
+    setIsOpen(false);
   };
 
   const formatAddress = (addr: string) => {
@@ -64,9 +63,9 @@ export function ProfileDropdown() {
 
   const getWalletIcon = () => {
     if (connector?.name.toLowerCase().includes('metamask')) {
-      return '🦊'; // MetaMask icon
+      return '🦊';
     }
-    return '🔗'; // Generic wallet icon
+    return '🔗';
   };
 
   if (!isConnected || !address) {
@@ -172,7 +171,6 @@ export function ProfileDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
       
-      {/* Registration Modal */}
       {address && (
         <EnhancedRegistrationModal
           isOpen={showRegistrationModal}

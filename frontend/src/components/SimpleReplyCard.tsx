@@ -25,7 +25,6 @@ export function SimpleReplyCard({ reply, className }: SimpleReplyCardProps) {
   const [userEncryptedAddress, setUserEncryptedAddress] = useState<string | null>(null);
   const [isAuthor, setIsAuthor] = useState(false);
   
-  // Get user's encrypted address to compare with reply author
   useEffect(() => {
     const getUserEncryptedAddress = async () => {
       if (!address) return;
@@ -35,11 +34,10 @@ export function SimpleReplyCard({ reply, className }: SimpleReplyCardProps) {
           .from('user_sessions')
           .select('encrypted_address')
           .eq('wallet_address', address)
-          .single();
+          .maybeSingle();
 
         if (userSession?.encrypted_address) {
           setUserEncryptedAddress(userSession.encrypted_address);
-          // Compare with encrypted_author_id if available, otherwise with author_id
           const replyAuthorId = reply.encrypted_author_id || reply.author_id;
           setIsAuthor(userSession.encrypted_address === replyAuthorId);
         }
@@ -51,11 +49,9 @@ export function SimpleReplyCard({ reply, className }: SimpleReplyCardProps) {
     getUserEncryptedAddress();
   }, [address, reply.author_id]);
   
-  // Use the encrypted_author_id for display if available, otherwise author_id
   const displayAddress = reply.encrypted_author_id || reply.author_id;
   
   const formatAddress = (addr: string) => {
-    // If it's an encrypted address (longer), show more characters
     if (addr.length > 42) {
       return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
     }
@@ -70,7 +66,6 @@ export function SimpleReplyCard({ reply, className }: SimpleReplyCardProps) {
     <Card className={`bg-background border-border/50 ${className || ''}`}>
       <CardContent className="p-4">
         <div className="space-y-3">
-          {/* Reply Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-full bg-gradient-primary flex items-center justify-center">
@@ -106,7 +101,6 @@ export function SimpleReplyCard({ reply, className }: SimpleReplyCardProps) {
             )}
           </div>
 
-          {/* Reply Content */}
           <div className="pl-8">
             <p className="text-sm text-foreground leading-relaxed">
               {reply.content}

@@ -8,10 +8,10 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
-import { useWallet } from '../hooks/useContract';
-import { supabase } from '../lib/supabase';
+import { useWallet } from '@/hooks/useContract';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useLogger } from '../hooks/useLogger';
+import { useLogger } from '@/hooks/useLogger';
 
 interface CreatorEarningsProps {
   creatorAddress: string;
@@ -34,7 +34,6 @@ export function CreatorEarnings({
     claimableAmount: 0
   });
 
-  // Fetch real earnings data from Supabase
   const fetchEarningsData = async (isRefresh = false) => {
     if (!creatorAddress) {
       setIsLoading(false);
@@ -50,7 +49,6 @@ export function CreatorEarnings({
     try {
       log.info('Fetching tip earnings data for creator', { creatorAddress });
 
-      // First, get the creator's encrypted address from user_sessions
       const { data: userSession, error: sessionError } = await supabase
         .from('user_sessions')
         .select('encrypted_address')
@@ -69,7 +67,6 @@ export function CreatorEarnings({
 
       if (!userSession?.encrypted_address) {
         log.warn('No encrypted address found for creator', { creatorAddress });
-        // Set default values for creators without encrypted address
         setEarningsData({
           totalEarnings: 0,
           monthlyEarnings: 0,
@@ -87,7 +84,6 @@ export function CreatorEarnings({
 
       const creatorEncryptedAddress = userSession.encrypted_address;
 
-      // Fetch tip earnings from access_logs table
       const { data: tipData, error: tipError } = await supabase
         .from('access_logs')
         .select('amount_wei, created_at')
@@ -105,12 +101,10 @@ export function CreatorEarnings({
         return;
       }
 
-      // Calculate tip earnings
       const tips = tipData || [];
       
-      // Convert from wei to ETH and calculate totals
       const totalEarningsWei = tips.reduce((sum, tip) => sum + (tip.amount_wei || 0), 0);
-      const totalEarnings = totalEarningsWei / 1e18; // Convert wei to ETH
+      const totalEarnings = totalEarningsWei / 1e18;
       
       const monthlyEarningsWei = tips
         .filter(tip => {
@@ -119,19 +113,18 @@ export function CreatorEarnings({
           return tipDate.getMonth() === now.getMonth() && tipDate.getFullYear() === now.getFullYear();
         })
         .reduce((sum, tip) => sum + (tip.amount_wei || 0), 0);
-      const monthlyEarnings = monthlyEarningsWei / 1e18; // Convert wei to ETH
+      const monthlyEarnings = monthlyEarningsWei / 1e18;
 
       const tipCount = tips.length;
 
-      // Get last claimed date (this would come from contract in production)
-      const lastClaimed = 'Never'; // Placeholder - would need contract integration
+      const lastClaimed = 'Never';
 
       setEarningsData({
         totalEarnings,
         monthlyEarnings,
         tipCount,
         lastClaimed,
-        claimableAmount: totalEarnings * 0.9 // 90% claimable (10% platform fee)
+        claimableAmount: totalEarnings * 0.9
       });
 
       log.info('Tip earnings data fetched', {
@@ -172,7 +165,6 @@ export function CreatorEarnings({
       return;
     }
 
-    // Verify the connected wallet matches the creator address
     if (address.toLowerCase() !== creatorAddress.toLowerCase()) {
       toast.error('You can only claim earnings for your own account');
       return;
@@ -183,11 +175,9 @@ export function CreatorEarnings({
     try {
       log.info('Claiming earnings', { amount: earningsData.claimableAmount });
       
-      // Import contract and claim earnings
       const { VentbuddyContract } = await import('../lib/contract');
       const contract = new VentbuddyContract(walletClient);
       
-      // Convert ETH to wei for the contract call
       const claimAmountWei = BigInt(Math.floor(earningsData.claimableAmount * 1e18));
       
       log.info('Calling contract.claimEarnings with amount', {
@@ -195,20 +185,17 @@ export function CreatorEarnings({
         wei: claimAmountWei.toString()
       });
       
-      // Call the smart contract to claim earnings
       const txHash = await contract.claimEarnings(claimAmountWei);
       
       log.info('Claim transaction submitted', { txHash });
       toast.success(`Claim transaction submitted! Hash: ${txHash.substring(0, 10)}...`);
       
-      // Update earnings data after successful claim
       setEarningsData(prev => ({
         ...prev,
         claimableAmount: 0,
         lastClaimed: new Date().toLocaleDateString()
       }));
       
-      // Refresh earnings data to get updated amounts
       setTimeout(() => {
         window.location.reload(); // Simple refresh - could be improved with state management
       }, 3000);
@@ -216,7 +203,6 @@ export function CreatorEarnings({
     } catch (error: any) {
       log.error('Claim earnings failed', error);
       
-      // Handle specific error cases
       if (error.message?.includes('insufficient funds')) {
         toast.error('Insufficient funds for transaction gas');
       } else if (error.message?.includes('user rejected')) {
@@ -234,8 +220,8 @@ export function CreatorEarnings({
 
   const formatEarnings = (amount: number) => {
     if (amount === 0) return '0.00';
-    if (amount < 0.01) return amount.toFixed(6); // Show more decimals for small amounts
-    return amount.toFixed(4); // Show 4 decimals for larger amounts
+    if (amount < 0.01) return amount.toFixed(6);
+    return amount.toFixed(4);
   };
 
   if (isLoading) {
@@ -251,7 +237,6 @@ export function CreatorEarnings({
 
   return (
     <div className="space-y-6">
-      {/* Earnings Overview */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -302,7 +287,6 @@ export function CreatorEarnings({
         </CardContent>
       </Card>
 
-      {/* Claimable Earnings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
